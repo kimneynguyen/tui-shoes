@@ -1,52 +1,59 @@
 /*
-  Music Sampling Shoes : Minima foot sketch (one per shoe)
-  ------------------------------------------------
+  Sound Effect Shoes : Minima foot sketch (one per shoe)
+  ------------------------------------------------------
   Board: Arduino UNO R4 Minima
-  Reads:  FSR in the sole (A0) + MPU-6050 gyro/accelerometer on the breadboard (I2C)
-  Sends:  the numbers 50 times a second, to
-            - Serial (USB)  -> Serial Monitor, or the sampler's "USB test" button
-            - the XIAO, over the same two I2C wires (SDA/SCL) the gyro uses.
-              The XIAO listens at address 0x08 and sends the numbers over Bluetooth.
-              No voltage divider is needed: the gyro board keeps SDA/SCL at 3.3 V.
 
-  Wiring (same on both shoes):
-     FSR:  one leg -> 5V, other leg -> A0, 220 ohm (red red brown) from A0 -> GND
-     Gyro: VCC -> 5V, GND -> GND, SCL -> SCL, SDA -> SDA   (via A5/A4, the same pins)
-     XIAO: 5V -> 5V, GND -> GND, D4 -> SCL, D5 -> SDA
+  Figures out what this foot is doing and sends it on:
+     STILL  no movement for 2 seconds  -> laptop pauses the sound
+     WALK   steps at a normal pace     -> default volume
+     RUN    fast steps                 -> max volume
+     SPIN   a full 360 turn            -> laptop switches to the next sound
 
-  USB line format:  FOOT,fsr,pitch,roll,shake
-     FOOT   L or R
-     fsr    0..4095 (higher = more pressure)
-     pitch  degrees, toe up / toe down
-     roll   degrees, ankle rolling in / out
-     shake  how fast the foot is rotating, degrees per second
+  Files (each one is a tab in the Arduino app):
+     config.h      settings: FOOT, parts on/off, thresholds   <<< start here
+     fsr_sensor.h  the pressure sensor
+     imu.h         the MPU-6050 gyro
+     motion.h      steps, spins, walk / run / still
+     xiao_link.h   sending to the XIAO
+     packet.h      the 20 bytes sent to the XIAO and the laptop
 
-  BEFORE UPLOADING: set FOOT below to 'L' or 'R'.
-  No extra libraries needed.
+  DEBUGGING: open the Serial Monitor (115200), type a key and press Enter:
+     0  app mode: the line the music app reads (default)
+     1  pressure sensor only        4  spin detector only
+     2  gyro board only             5  walk / run / still decision
+     3  step detector only          6  XIAO link only
+     c  re-measure the gyro offset (keep the shoe still)
+     q  quiet         h  this help
+  Modes 1-5 also work in Tools > Serial Plotter.
+  To run without a part, set USE_FSR / USE_IMU / USE_XIAO to 0 in config.h.
 */
 
 #include <Wire.h>
-#include <math.h>
+#include "config.h"
+#include "packet.h"
+#include "motion.h"
+#include "fsr_sensor.h"
+#include "imu.h"
+#include "xiao_link.h"
 
-#define FOOT 'L'            // <<< 'L' for the left shoe, 'R' for the right shoe
-#define FSR_PIN A0
-#define SEND_HZ 50
+enum Mode : char { MODE_APP = '0', MODE_FSR = '1', MODE_IMU = '2', MODE_STEPS = '3',
+                   MODE_SPIN = '4', MODE_STATE = '5', MODE_XIAO = '6', MODE_QUIET = 'q' };
 
-const uint8_t MPU_ADDR  = 0x68;  // use 0x69 if the GY-521 AD0 pin is wired to VCC
-const uint8_t XIAO_ADDR = 0x08;  // must match xiao_radio.ino
+FsrSensor fsr;
+Mpu6050 imu;
+XiaoLink xiao;
+StepDetector steps;
+GravityTracker gravity;
+SpinDetector spin;
+MotionClassifier motion;
+FootPacket pkt = {};
 
-bool mpuOk = false;
-float fsrF = 0, pitchF = 0, rollF = 0, shakeF = 0;
-uint32_t lastSend = 0, lastRetry = 0;
-uint8_t xiaoErr = 0;
+char mode = MODE_APP;
+float yawDps = 0;
+uint32_t lastSample = 0, lastSend = 0, lastImuRetry = 0, lastSlow = 0;
+uint8_t lastState = 0xFF;
 
-// 8 bytes sent to the XIAO, little endian (same layout the XIAO sends to the laptop)
-struct __attribute__((packed)) FootData {
-  uint16_t fsr;       // 0..4095
-  int16_t  pitch100;  // degrees * 100
-  int16_t  roll100;   // degrees * 100
-  uint16_t shake;     // deg/s
-};
+const bool stepsFromFsr = USE_FSR && STEPS_FROM_FSR;
 
 // The R4's Wire library turns on the chip's internal pull-ups, which go to 5 V.
 // The XIAO only takes 3.3 V, so switch them off and let the gyro board's
@@ -58,106 +65,220 @@ void i2cPullupsOff() {
                   (uint32_t)(IOPORT_CFG_DRIVE_MID | IOPORT_CFG_PERIPHERAL_PIN | IOPORT_PERIPHERAL_IIC));
 }
 
-// ---------- MPU-6050 helpers (raw I2C, no library) ----------
-void mpuWrite(uint8_t reg, uint8_t val) {
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(reg);
-  Wire.write(val);
-  Wire.endTransmission();
+// ---------------------------------------------------------------------
+void printHelp() {
+  Serial.println(F("# ---- Sound Effect Shoes: debug keys (type, then Enter) ----"));
+  Serial.println(F("# 0 app line | 1 pressure | 2 gyro | 3 steps | 4 spin | 5 state | 6 XIAO"));
+  Serial.println(F("# c re-measure gyro offset (keep still) | q quiet | h help"));
+  Serial.print(F("# parts: FSR ")); Serial.print(USE_FSR ? F("on") : F("OFF"));
+  Serial.print(F(", gyro ")); Serial.print(USE_IMU ? (imu.ok ? F("on") : F("NOT FOUND (check SDA/SCL/VCC)")) : F("OFF"));
+  Serial.print(F(", XIAO ")); Serial.print(USE_XIAO ? F("on") : F("OFF"));
+  Serial.print(F(", steps from ")); Serial.println(stepsFromFsr ? F("pressure sensor") : F("gyro board"));
 }
 
-bool mpuInit() {
-  mpuWrite(0x6B, 0x00);   // wake up
-  delay(50);
-  mpuWrite(0x1A, 0x03);   // low pass filter ~44 Hz (smooths footstep jitter)
-  mpuWrite(0x1B, 0x08);   // gyro range +/-500 deg/s  (65.5 per deg/s)
-  mpuWrite(0x1C, 0x00);   // accel range +/-2 g       (16384 per g)
-  Wire.beginTransmission(MPU_ADDR);
-  return Wire.endTransmission() == 0;
+void calibrateGyro() {
+#if USE_IMU
+  if (!imu.ok) { Serial.println(F("# gyro not found, can't calibrate")); return; }
+  Serial.println(F("# measuring gyro offset, keep the shoe still..."));
+  imu.calibrate();
+  Serial.print(F("# gyro offset x/y/z: "));
+  Serial.print(imu.biasX, 2); Serial.print(' ');
+  Serial.print(imu.biasY, 2); Serial.print(' ');
+  Serial.println(imu.biasZ, 2);
+#endif
 }
 
-bool mpuRead(int16_t v[7]) {
-  Wire.beginTransmission(MPU_ADDR);
-  Wire.write(0x3B);
-  if (Wire.endTransmission(false) != 0) return false;
-  if (Wire.requestFrom(MPU_ADDR, (uint8_t)14) != 14) return false;
-  for (int i = 0; i < 7; i++) {
-    uint8_t hi = Wire.read();
-    uint8_t lo = Wire.read();
-    v[i] = (int16_t)((hi << 8) | lo);
+void handleSerial() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\r' || c == '\n' || c == ' ') continue;
+    if (c == 'h' || c == '?') printHelp();
+    else if (c == 'c') calibrateGyro();
+    else if ((c >= '0' && c <= '6') || c == 'q') {
+      mode = c;
+      Serial.print(F("# mode ")); Serial.println(c);
+    } else {
+      Serial.print(F("# unknown key '")); Serial.print(c); Serial.println(F("', type h for help"));
+    }
   }
-  return true;
 }
 
-// ---------- output ----------
-void sendLine(Stream &out) {
-  out.print(FOOT);           out.print(',');
-  out.print((int)fsrF);      out.print(',');
-  out.print(pitchF, 2);      out.print(',');
-  out.print(rollF, 2);       out.print(',');
-  out.println((int)shakeF);
+// ---------------------------------------------------------------------
+void readSensors(uint32_t now, float dt) {
+  steps.beginSample();
+  bool moving = false;
+
+#if USE_FSR
+  fsr.read();
+  if (stepsFromFsr) steps.updateFsr(now, fsr.value);
+#endif
+
+#if USE_IMU
+  if (imu.ok && imu.read()) {
+    gravity.update(imu.ax, imu.ay, imu.az);
+    yawDps = gravity.yawRate(imu.gx, imu.gy, imu.gz);
+    spin.update(now, yawDps, dt);
+    if (!stepsFromFsr) steps.updateAccel(now, imu.accelG());
+    moving = imu.gyroDps() > MOVE_GYRO_DPS || fabsf(imu.accelG() - 1.0f) > MOVE_ACCEL_G;
+  } else if (now - lastImuRetry > 2000) {
+    lastImuRetry = now;          // unplugged? keep trying
+    if (imu.begin()) Serial.println(F("# gyro found again"));
+  }
+#endif
+
+  motion.update(now, steps, spin, moving);
 }
 
-void sendToXiao() {
-  FootData d;
-  d.fsr      = (uint16_t)constrain((int)fsrF, 0, 65535);
-  d.pitch100 = (int16_t)constrain(pitchF * 100.0f, -32000.0f, 32000.0f);
-  d.roll100  = (int16_t)constrain(rollF * 100.0f, -32000.0f, 32000.0f);
-  d.shake    = (uint16_t)constrain((int)shakeF, 0, 65535);
-  Wire.beginTransmission(XIAO_ADDR);
-  Wire.write((const uint8_t *)&d, sizeof(d));
-  xiaoErr = Wire.endTransmission();   // 0 = the XIAO got it
+void fillPacket() {
+  pkt.state   = motion.state;
+  pkt.spins   = spin.spins;
+  pkt.spinPct = spin.progressPct();
+  pkt.fsr     = fsr.value;
+  pkt.steps   = steps.count;
+  pkt.stepMs  = steps.intervalMs;
+  pkt.ax      = (int16_t)(imu.ax * 100);
+  pkt.ay      = (int16_t)(imu.ay * 100);
+  pkt.az      = (int16_t)(imu.az * 100);
+  pkt.yawRate = (int16_t)constrain(yawDps, -32000.0f, 32000.0f);
+  pkt.gyro    = (uint16_t)constrain(imu.gyroDps(), 0.0f, 65000.0f);
+  pkt.flags   = (imu.ok ? FLAG_IMU_OK : 0) | (steps.down ? FLAG_FOOT_DOWN : 0) | (xiao.ok() ? FLAG_XIAO_OK : 0);
 }
 
+// ---------------------------------------------------------------------
+// Output for each debug mode. "name:value" pairs work in the Serial Plotter.
+void printAppLine() {
+  // FOOT,state,spins,spinPct,fsr,steps,stepMs,ax,ay,az,yawRate,gyro,flags
+  Serial.print(FOOT);           Serial.print(',');
+  Serial.print(pkt.state);      Serial.print(',');
+  Serial.print(pkt.spins);      Serial.print(',');
+  Serial.print(pkt.spinPct);    Serial.print(',');
+  Serial.print(pkt.fsr);        Serial.print(',');
+  Serial.print(pkt.steps);      Serial.print(',');
+  Serial.print(pkt.stepMs);     Serial.print(',');
+  Serial.print(pkt.ax);         Serial.print(',');
+  Serial.print(pkt.ay);         Serial.print(',');
+  Serial.print(pkt.az);         Serial.print(',');
+  Serial.print(pkt.yawRate);    Serial.print(',');
+  Serial.print(pkt.gyro);       Serial.print(',');
+  Serial.println(pkt.flags);
+}
+
+void printDebug(uint32_t now) {
+  switch (mode) {
+    case MODE_APP: printAppLine(); break;
+    case MODE_FSR:
+      Serial.print(F("fsr:"));        Serial.print(fsr.value);
+      Serial.print(F(",pressAt:"));   Serial.print((int)steps.pressAt);
+      Serial.print(F(",releaseAt:")); Serial.print((int)steps.releaseAt);
+      Serial.print(F(",down:"));      Serial.println(steps.down ? 1000 : 0);
+      break;
+    case MODE_IMU:
+      Serial.print(F("ax:"));    Serial.print(imu.ax, 2);
+      Serial.print(F(",ay:"));   Serial.print(imu.ay, 2);
+      Serial.print(F(",az:"));   Serial.print(imu.az, 2);
+      Serial.print(F(",g:"));    Serial.print(imu.accelG(), 2);
+      Serial.print(F(",gx:"));   Serial.print(imu.gx, 0);
+      Serial.print(F(",gy:"));   Serial.print(imu.gy, 0);
+      Serial.print(F(",gz:"));   Serial.print(imu.gz, 0);
+      Serial.print(F(",yaw:"));  Serial.print(yawDps, 0);
+      Serial.print(F(",found:"));Serial.println(imu.ok ? 1 : 0);
+      break;
+    case MODE_STEPS:
+      Serial.print(stepsFromFsr ? F("fsr:") : F("g100:"));
+      Serial.print(stepsFromFsr ? (float)fsr.value : imu.accelG() * 100, 0);
+      Serial.print(F(",down:"));    Serial.print(steps.down ? 1 : 0);
+      Serial.print(F(",steps:"));   Serial.print(steps.count);
+      Serial.print(F(",stepMs:"));  Serial.print(steps.intervalMs);
+      Serial.print(F(",avgMs:"));   Serial.print(steps.avgMs);
+      Serial.print(F(",perMin:"));  Serial.println(steps.stepsPerMin());
+      break;
+    case MODE_SPIN:
+      Serial.print(F("yaw:"));      Serial.print(yawDps, 0);
+      Serial.print(F(",angle:"));   Serial.print(spin.angle, 0);
+      Serial.print(F(",pct:"));     Serial.print(spin.progressPct());
+      Serial.print(F(",spins:"));   Serial.println(spin.spins);
+      break;
+    case MODE_STATE:
+      Serial.print(F("state:"));    Serial.print(motion.state);
+      Serial.print(F(",avgStepMs:"));Serial.print(steps.avgMs);
+      Serial.print(F(",runBelow:"));Serial.print(RUN_STEP_MS);
+      Serial.print(F(",stillInMs:"));Serial.print(motion.stillIn(now));
+      Serial.print(F(",spinPct:")); Serial.print(spin.progressPct());
+      Serial.print(F("  "));        Serial.println(stateName(motion.state));
+      break;
+    case MODE_XIAO:
+      if (now - lastSlow < 500) break;
+      lastSlow = now;
+#if USE_XIAO
+      Serial.print(F("# xiao: "));
+      Serial.print(xiao.ok() ? F("ok") : F("NOT ANSWERING (check D4/D5 wires and XIAO power)"));
+      Serial.print(F("  sent:"));   Serial.print(xiao.sent);
+      Serial.print(F("  failed:")); Serial.print(xiao.failed);
+      Serial.print(F("  last error code:")); Serial.println(xiao.lastErr);
+#else
+      Serial.println(F("# xiao: OFF (USE_XIAO is 0 in config.h)"));
+#endif
+      break;
+  }
+}
+
+void printEvents() {
+  if (steps.stepped && (mode == MODE_FSR || mode == MODE_STEPS)) {
+    Serial.print(F("# step ")); Serial.print(steps.count);
+    Serial.print(F(" (")); Serial.print(steps.intervalMs); Serial.println(F(" ms)"));
+  }
+  bool showEvents = mode == MODE_APP || mode == MODE_SPIN || mode == MODE_STATE;
+  if (spin.spun && showEvents) {
+    Serial.print(F("# ")); Serial.print(FOOT);
+    Serial.print(F(" SPIN #")); Serial.println(spin.spins);
+  }
+  if (motion.state != lastState) {
+    if (showEvents) {
+      Serial.print(F("# ")); Serial.print(FOOT);
+      Serial.print(F(" state ")); Serial.println(stateName(motion.state));
+    }
+    lastState = motion.state;
+  }
+}
+
+// ---------------------------------------------------------------------
 void setup() {
-  Serial.begin(115200);      // USB
-  analogReadResolution(12);  // 0..4095
+  Serial.begin(115200);
+#if USE_FSR
+  fsr.begin();
+#endif
+#if USE_IMU || USE_XIAO
   Wire.begin();
-  Wire.setClock(100000);     // 100 kHz: plenty for 50 messages a second, and easy on the XIAO
+  Wire.setClock(100000);
   i2cPullupsOff();
-  mpuOk = mpuInit();
-  delay(200);
-  Serial.print("# Music Sampling Shoes Minima foot ");
-  Serial.print(FOOT);
-  Serial.println(mpuOk ? " ready, MPU-6050 found" : " ready, MPU-6050 NOT FOUND (check SDA/SCL/VCC)");
+#endif
+#if USE_IMU
+  imu.begin();
+#endif
+  delay(300);
+  Serial.print(F("# Sound Effect Shoes, Minima foot ")); Serial.println(FOOT);
+  calibrateGyro();
+  printHelp();
+  lastSample = millis();
 }
 
 void loop() {
+  handleSerial();
+
   uint32_t now = millis();
-  if (now - lastSend < 1000 / SEND_HZ) return;
-  lastSend = now;
+  if (now - lastSample < 1000 / SAMPLE_HZ) return;
+  float dt = (now - lastSample) / 1000.0f;
+  lastSample = now;
 
-  // FSR: average a few reads, light smoothing so stomps stay sharp
-  long raw = 0;
-  for (int i = 0; i < 4; i++) raw += analogRead(FSR_PIN);
-  raw /= 4;
-  fsrF += 0.5f * ((float)raw - fsrF);
+  readSensors(now, dt);
+  printEvents();
 
-  // MPU-6050: tilt from the accelerometer, shake from the gyro
-  int16_t v[7];
-  if (mpuOk && mpuRead(v)) {
-    float ax = v[0] / 16384.0f, ay = v[1] / 16384.0f, az = v[2] / 16384.0f;
-    float gx = v[4] / 65.5f,    gy = v[5] / 65.5f,    gz = v[6] / 65.5f;
-    // The breadboard sits ACROSS the shoe, so toe up/down is the gyro's Y-axis tilt.
-    // (If it ever sits heel-to-toe instead, swap these two lines back.)
-    float p = atan2f(ay, az) * 57.2958f;                          // toe up / down
-    float r = atan2f(-ax, sqrtf(ay * ay + az * az)) * 57.2958f;   // ankle in / out
-    pitchF += 0.25f * (p - pitchF);
-    rollF  += 0.25f * (r - rollF);
-    float g = sqrtf(gx * gx + gy * gy + gz * gz);
-    shakeF += 0.3f * (g - shakeF);
-  } else if (now - lastRetry > 2000) {
-    lastRetry = now;           // sensor unplugged? keep trying
-    mpuOk = mpuInit();
-  }
-
-  sendToXiao();
-  sendLine(Serial);
-
-  // once a second, say if the XIAO is answering
-  static uint32_t lastDbg = 0;
-  if (now - lastDbg > 1000) {
-    lastDbg = now;
-    Serial.println(xiaoErr == 0 ? "# xiao: ok" : "# xiao: NOT ANSWERING (check D4/D5 wires and XIAO power)");
+  if (now - lastSend >= 1000 / SEND_HZ) {
+    lastSend = now;
+    fillPacket();
+#if USE_XIAO
+    xiao.send(pkt);
+#endif
+    printDebug(now);
   }
 }
