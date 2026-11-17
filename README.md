@@ -4,12 +4,12 @@ Two shoes that control sound effects on a laptop. Walk, run, stand still, or spi
 
 | Move | What the sound does |
 |---|---|
-| **Walk** | Plays at the normal volume |
-| **Run** | Plays at max volume |
-| **Stand still for 2 seconds** | Pauses (and picks up where it left off when you move) |
+| **Walk** (left and right feet taking turns) | Plays at the normal volume |
+| **Run** (taking turns, fast) | Plays at max volume |
+| **No step for 2 seconds** | Pauses (and picks up where it left off when you walk again) |
 | **Spin 360** on one foot or both | Switches to the next of the 4 sounds |
 
-Each shoe works out what it's doing by itself and sends it to the laptop. The app goes with the busiest shoe: if either shoe is running, it's loud, and it only pauses when **both** shoes are still. Both feet spinning together count as one spin.
+Only steps count: tilting, shaking or rocking a shoe never plays sound. Each shoe counts its own steps (a press on the pressure sensor) and sends them to the laptop. With both shoes connected, the app only plays when the feet **take turns**: at least 2 left-right switches in the last 3 seconds, each 0.15 to 1.5 seconds apart. Both feet landing together (a hop) doesn't count. If either shoe's steps are fast enough to be running, it's loud. With one shoe connected (for testing), that shoe's own steps count. The turn rule can be switched off in the app. Both feet spinning together count as one spin.
 
 The 4 built-in sounds are Rain, Ocean, Wind chimes and Campfire. Load your own file into any of them with **Load file**. Each sound also has a color, ready for the color sensor in the next version.
 
@@ -177,7 +177,8 @@ g++ -std=c++17 -I../../minima_foot logic_test.cpp -o logic_test && ./logic_test
 | Spins don't count | Watch key `4`. Lower `SPIN_RATE_DPS` or `SPIN_DEG` |
 | Turning around counts as a spin | Raise `SPIN_DEG` (keep it above 270) |
 | Pauses too soon / too late | `STILL_MS` (2000 = 2 seconds) |
-| Fidgeting stops the pause | Raise `MOVE_GYRO_DPS` / `MOVE_ACCEL_G` |
+| Tilting the shoe still counts steps | Watch key `1` while tilting. If the pressure jumps when the sole bends, raise `FSR_MIN_PRESS` above that number |
+| Walking takes too long to start | In `sampler/index.html`, lower `TURNS_NEEDED` to 1 |
 
 Walking and running volume are sliders in the app. The app's max is 100%, so turn the laptop's volume up too.
 

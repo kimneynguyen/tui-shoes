@@ -107,7 +107,7 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
       <div class="swatch" id="nowSwatch"></div>
       <div><div class="label">Sound</div><div class="big" id="nowName">-</div><div class="help" id="nowSlot"></div></div>
     </div>
-    <div><div class="label">Movement</div><span class="badge big" id="nowState">STILL</span></div>
+    <div><div class="label">Movement</div><span class="badge big" id="nowState">STILL</span><div class="help" id="nowTurns"></div></div>
     <div>
       <div class="label">Volume</div>
       <div class="bar" style="height:18px"><i id="nowVolBar"></i></div>
@@ -127,6 +127,7 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
     <h2>Volume</h2>
     <div class="row"><span>Walking</span><input type="range" id="walkVol" min="0" max="100"><span class="num" id="walkVolN"></span></div>
     <div class="row"><span>Running</span><input type="range" id="runVol" min="0" max="100"><span class="num" id="runVolN"></span></div>
+    <label class="help" style="display:block;margin:10px 0 4px"><input type="checkbox" id="requireTurns"> Both feet must take turns stepping (left, right, left...) when both shoes are connected</label>
     <p class="help">Running plays at the Running level (100% = as loud as this app goes, so turn the laptop volume up too). Standing still for 2 seconds pauses the sound. It picks up where it left off when you move again.</p>
   </section>
 
@@ -134,7 +135,7 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
     <h2>How to play</h2>
     <div class="help">
       <p><b>Walk</b>: normal volume. <b>Run</b>: max volume. <b>Stand still</b> for 2 seconds: the sound pauses. <b>Spin 360</b> on one foot or both: next sound. Both feet spinning together count as one spin.</p>
-      <p>Each shoe decides what it's doing by itself. The app plays the loudest one: if either shoe runs, it's loud. It only pauses when both shoes are still.</p>
+      <p>Only steps count. Tilting or shaking a shoe does nothing. With both shoes connected, the feet have to take turns (left, right, left) at walking speed or faster. With one shoe connected, that shoe's own steps count.</p>
       <p>Keyboard for testing without shoes: <kbd>W</kbd> walk, <kbd>R</kbd> run, <kbd>X</kbd> still, <kbd>S</kbd> spin, <kbd>1</kbd>-<kbd>4</kbd> pick a sound.</p>
     </div>
   </section>
@@ -197,6 +198,10 @@ const PLOT_MS = 10000;
 const LOG_MAX = 4000;
 const LOOP_SEC = 8, SR = 44100;
 const FOOT_NAME = {L:'Left', R:'Right'};
+// Taking turns (both shoes connected): a step on one foot right after a step on the other.
+const TURN_MIN_MS = 150, TURN_MAX_MS = 1500;   // gap between a left step and a right step
+const TURN_WINDOW_MS = 3000, TURNS_NEEDED = 2;  // this many turns in this long = walking
+const STOP_MS = 2000;                           // no step for this long = still
 
 const DEFAULT_SLOTS = [
   {name:'Rain',       color:'#4a90e2'},
@@ -214,7 +219,7 @@ const $ = id => document.getElementById(id);
 function emptyData(){ return {state:0, spins:0, flags:0, spinPct:0, fsr:0, steps:0, stepMs:0, ax:0, ay:0, az:0, yaw:0, gyro:0}; }
 function mkFoot(id){
   return { id, d:emptyData(), src:'', lastLive:0, pkts:0, rate:0, hist:[],
-    lastSpins:null, lastState:null, sim:{state:STILL, spinUntil:0, spins:0} };
+    lastSpins:null, lastSteps:null, lastState:null, sim:{state:STILL, spinUntil:0, spins:0} };
 }
 const feet = {L:mkFoot('L'), R:mkFoot('R')};
 const isLive = (f, now = performance.now()) => now - f.lastLive < LIVE_MS;
@@ -231,6 +236,10 @@ function ingest(id, d, src, rawLine){
   while (f.hist.length && f.hist[0].t < now - PLOT_MS) f.hist.shift();
   logData(id, src, rawLine || packetToCsv(id, d));
   if (f.lastState !== d.state){ if (f.lastState !== null) logEvent(id, `${FOOT_NAME[id]} shoe: ${STATES[d.state] || d.state}`); f.lastState = d.state; }
+  if (f.lastSteps === null) f.lastSteps = d.steps;
+  const newSteps = (d.steps - f.lastSteps + 65536) % 65536;
+  f.lastSteps = d.steps;
+  if (newSteps > 0 && newSteps < 10) recordStep(id, now);
   if (f.lastSpins === null) f.lastSpins = d.spins;
   const n = (d.spins - f.lastSpins + 256) % 256;
   f.lastSpins = d.spins;
@@ -254,8 +263,32 @@ function packetToCsv(id, d){
 }
 
 // ===================== what the shoes mean for the sound =====================
+let lastStep = null, turns = [], requireTurns = load('requireTurns', true), wasTurning = false;
+function recordStep(id, t){
+  const gap = lastStep ? t - lastStep.t : Infinity, otherFoot = lastStep && lastStep.foot !== id;
+  if (otherFoot && gap < TURN_MIN_MS){
+    // both feet landed together (a hop): neither step is a turn
+    if (lastStep.turn) turns.pop();
+    lastStep = {foot:id, t, turn:false, together:true};
+    return;
+  }
+  const turn = otherFoot && !lastStep.together && gap <= TURN_MAX_MS;
+  if (turn) turns.push(t);
+  lastStep = {foot:id, t, turn, together:false};
+  while (turns.length && turns[0] < t - TURN_WINDOW_MS) turns.shift();
+}
+const recentTurns = (now = performance.now()) => turns.filter(t => t > now - TURN_WINDOW_MS).length;
+const feetTakingTurns = (now = performance.now()) =>
+  !!lastStep && now - lastStep.t < STOP_MS && recentTurns(now) >= TURNS_NEEDED;
+const usingTurns = (now = performance.now()) => requireTurns && isLive(feet.L, now) && isLive(feet.R, now);
+
 function overallState(now = performance.now()){
   const s = ['L','R'].map(id => footState(feet[id], now));
+  if (usingTurns(now)){
+    // both shoes connected: only left-right-left stepping plays sound
+    if (!feetTakingTurns(now)) return s.includes(SPIN) ? WALK : STILL;
+    return s.includes(RUN) ? RUN : WALK;
+  }
   if (s.includes(RUN)) return RUN;
   if (s.includes(WALK) || s.includes(SPIN)) return WALK;
   return STILL;
@@ -463,6 +496,8 @@ function buildPlay(){
   }
   document.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => simSet(b.dataset.foot, b.dataset.sim));
 
+  const rt = $('requireTurns'); rt.checked = requireTurns;
+  rt.onchange = () => { requireTurns = rt.checked; save('requireTurns', requireTurns); logApp(requireTurns ? 'feet must take turns' : 'feet no longer need to take turns'); };
   for (const k of ['walk','run']){
     const el = $(k+'Vol'), n = $(k+'VolN'); el.value = vol[k]; n.textContent = vol[k] + '%';
     el.oninput = () => { vol[k] = +el.value; n.textContent = vol[k] + '%'; save(k+'Vol', vol[k]); };
@@ -494,6 +529,12 @@ function drawPlay(){
   const b = $('nowState'); b.textContent = STATES[shown]; b.className = 'badge big s' + shown;
   const g = started ? master.gain.value : 0;
   $('nowVolBar').style.width = clamp(g, 0, 1)*100 + '%';
+  const turning = feetTakingTurns(now);
+  if (turning !== wasTurning && usingTurns(now)) logEvent(null, turning ? 'feet are taking turns: walking' : 'feet stopped taking turns');
+  wasTurning = turning;
+  $('nowTurns').textContent = usingTurns(now)
+    ? `left/right turns in the last 3 s: ${recentTurns(now)} (need ${TURNS_NEEDED})`
+    : (isLive(feet.L, now) || isLive(feet.R, now)) ? 'one shoe connected: its own steps count' : '';
   $('nowVolTxt').textContent = !started ? 'Press Start sound' : paused ? 'paused (no movement)' :
     `${Math.round(g*100)}%` + (st === RUN ? ' (running)' : st === WALK ? ' (walking)' : ' (fading out)');
   for (const id of ['L','R']){

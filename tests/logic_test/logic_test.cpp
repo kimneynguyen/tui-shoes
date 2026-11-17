@@ -19,10 +19,9 @@ struct Shoe {
     gravity.update(ax, ay, az);
     float yaw = gravity.yawRate(gx, gy, gz);
     spin.update(t, yaw, 0.01f);
-    float g = sqrtf(ax * ax + ay * ay + az * az), gyro = sqrtf(gx * gx + gy * gy + gz * gz);
+    float g = sqrtf(ax * ax + ay * ay + az * az);
     if (!fsrSteps) steps.updateAccel(t, g);
-    bool moving = gyro > MOVE_GYRO_DPS || fabsf(g - 1.0f) > MOVE_ACCEL_G;
-    motion.update(t, steps, spin, moving);
+    motion.update(t, steps, spin);
   }
   void still(uint32_t ms, uint16_t fsr = 1800) { for (uint32_t i = 0; i < ms; i += 10) sample(fsr, 0, 0, 1, 0, 0, 0); }
   // walk/run: foot down for downMs, then swings (rotating about the side-to-side axis)
@@ -68,6 +67,19 @@ int main() {
   { Shoe s; s.still(2500); s.gait(1100, 600, 4400);
     s.still(1500); CHECK(s.motion.state != STATE_STILL, "not still yet after 1.5 s");
     s.still(800);  CHECK(s.motion.state == STATE_STILL, "still after 2.3 s"); }
+
+  printf("Moving the shoe without stepping must stay STILL\n");
+  { Shoe s; s.still(2500, 0);
+    for (int i = 0; i < 400; i++) { float a = 0.6f * sinf(i * 0.08f); s.sample(0, sinf(a), 0, cosf(a), (i % 80 < 40) ? 150 : -150, 0, 0); }
+    CHECK(s.motion.state == STATE_STILL, "tilting back and forth for 4 s, sole not pressed"); }
+  { Shoe s; s.still(2500, 0);
+    for (int i = 0; i < 300; i++) s.sample(0, 0.3f * ((i % 6) - 3), 0, 1 + 0.5f * ((i % 4) - 2), 200, 120, 0);
+    CHECK(s.motion.state == STATE_STILL, "shaking it in the air"); }
+  { Shoe s; s.still(2500, 0); s.still(300, 2000); s.still(1000, 0);
+    CHECK(s.motion.state == STATE_STILL, "one press is not walking"); }
+  { Shoe s; s.still(2500, 1800);
+    for (int i = 0; i < 300; i++) { float a = 0.3f * sinf(i * 0.05f); s.sample(1800, sinf(a), 0, cosf(a), 80 * cosf(i * 0.05f), 0, 0); }
+    CHECK(s.motion.state == STATE_STILL, "standing on it and rocking (pressure stays on)"); }
 
   printf("360 spin\n");
   { Shoe s; s.still(2500); s.turn(500, 800);

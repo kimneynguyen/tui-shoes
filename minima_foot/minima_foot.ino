@@ -106,7 +106,6 @@ void handleSerial() {
 // ---------------------------------------------------------------------
 void readSensors(uint32_t now, float dt) {
   steps.beginSample();
-  bool moving = false;
 
 #if USE_FSR
   fsr.read();
@@ -119,14 +118,13 @@ void readSensors(uint32_t now, float dt) {
     yawDps = gravity.yawRate(imu.gx, imu.gy, imu.gz);
     spin.update(now, yawDps, dt);
     if (!stepsFromFsr) steps.updateAccel(now, imu.accelG());
-    moving = imu.gyroDps() > MOVE_GYRO_DPS || fabsf(imu.accelG() - 1.0f) > MOVE_ACCEL_G;
   } else if (now - lastImuRetry > 2000) {
     lastImuRetry = now;          // unplugged? keep trying
     if (imu.begin()) Serial.println(F("# gyro found again"));
   }
 #endif
 
-  motion.update(now, steps, spin, moving);
+  motion.update(now, steps, spin);
 }
 
 void fillPacket() {
@@ -202,7 +200,7 @@ void printDebug(uint32_t now) {
       Serial.print(F("state:"));    Serial.print(motion.state);
       Serial.print(F(",avgStepMs:"));Serial.print(steps.avgMs);
       Serial.print(F(",runBelow:"));Serial.print(RUN_STEP_MS);
-      Serial.print(F(",stillInMs:"));Serial.print(motion.stillIn(now));
+      Serial.print(F(",stillInMs:"));Serial.print(motion.stillIn(now, steps));
       Serial.print(F(",spinPct:")); Serial.print(spin.progressPct());
       Serial.print(F("  "));        Serial.println(stateName(motion.state));
       break;

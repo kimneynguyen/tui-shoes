@@ -132,29 +132,28 @@ private:
 
 // ---------------------------------------------------------------------
 // Put it together: STILL / WALK / RUN / SPIN.
+// Only steps make WALK or RUN. Tilting or shaking the shoe without
+// stepping stays STILL.
 // ---------------------------------------------------------------------
 class MotionClassifier {
 public:
   uint8_t state = STATE_STILL;
-  uint32_t lastMoveMs = 0;
-  bool everMoved = false;
 
-  uint8_t update(uint32_t now, const StepDetector &steps, const SpinDetector &spin, bool moving) {
-    if (moving || steps.stepped || spin.turning) { lastMoveMs = now; everMoved = true; }
-
-    if (!everMoved || now - lastMoveMs >= STILL_MS) state = STATE_STILL;
-    else if (spin.active(now)) state = STATE_SPIN;
+  uint8_t update(uint32_t now, const StepDetector &steps, const SpinDetector &spin) {
+    bool stepping = steps.lastStepMs && steps.avgMs && now - steps.lastStepMs < STILL_MS;
+    if (spin.active(now)) state = STATE_SPIN;
+    else if (!stepping) state = STATE_STILL;
     else {
       uint16_t runLimit = RUN_STEP_MS + (state == STATE_RUN ? RUN_HYST_MS : 0);
-      bool recent = steps.lastStepMs && now - steps.lastStepMs < RUN_HOLD_MS;
-      state = (recent && steps.avgMs && steps.avgMs < runLimit) ? STATE_RUN : STATE_WALK;
+      bool recent = now - steps.lastStepMs < RUN_HOLD_MS;
+      state = (recent && steps.avgMs < runLimit) ? STATE_RUN : STATE_WALK;
     }
     return state;
   }
 
   // ms left before this shoe calls itself still (0 = already still)
-  uint32_t stillIn(uint32_t now) const {
-    if (!everMoved || now - lastMoveMs >= STILL_MS) return 0;
-    return STILL_MS - (now - lastMoveMs);
+  uint32_t stillIn(uint32_t now, const StepDetector &steps) const {
+    if (!steps.lastStepMs || !steps.avgMs || now - steps.lastStepMs >= STILL_MS) return 0;
+    return STILL_MS - (now - steps.lastStepMs);
   }
 };
