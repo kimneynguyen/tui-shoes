@@ -3,499 +3,853 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Music Sampling Shoes</title>
+<title>Sound Effect Shoes</title>
+<link rel="icon" href="data:,">
 <style>
-:root{--bg:#0e1014;--panel:#171a21;--line:#2a2f3a;--text:#e9ebf1;--mute:#8d95a8;--L:#3fd0c0;--R:#f5a54a;--accent:#a58bff;--ok:#4cc38a}
+:root{--bg:#0e1014;--panel:#171a21;--line:#2a2f3a;--text:#e9ebf1;--mute:#8d95a8;--L:#3fd0c0;--R:#f5a54a;--accent:#a58bff;--ok:#4cc38a;--bad:#f5554a;
+  --still:#6b7280;--walk:#4cc38a;--run:#f5554a;--spin:#a58bff}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
 h1{font-size:18px;margin:0 14px 0 0;letter-spacing:.02em}
-h1 span{color:var(--mute);font-weight:400}
-button,select{background:#252a35;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;cursor:pointer}
+button,select,input[type=text]{background:#252a35;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit}
+button{cursor:pointer}
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#14111f;font-weight:650}
 button.L{border-color:var(--L)} button.R{border-color:var(--R)}
+button.small{padding:3px 9px;font-size:12px}
+.tabs{display:flex;gap:4px;background:#0a0c10;border:1px solid var(--line);border-radius:10px;padding:3px}
+.tabs button{border:0;background:transparent;padding:6px 14px}
+.tabs button.on{background:#252a35}
 .status{color:var(--mute);font-size:13px;margin-left:auto}
-main{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 20px 40px;max-width:1200px;margin:0 auto}
+main,.monitor{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 20px 40px;max-width:1280px;margin:0 auto}
+.hidden{display:none!important}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .full{grid-column:1/-1}
-@media(max-width:820px){main{grid-template-columns:1fr}.status{margin-left:0;width:100%}}
+@media(max-width:860px){main,.monitor{grid-template-columns:1fr}.status{margin-left:0;width:100%}}
 h2{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
-h3{margin:14px 0 6px;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
-.dot{width:9px;height:9px;border-radius:50%;background:#4a4f5c;display:inline-block}
-.dot.live{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+h3{margin:0 0 6px;font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em}
 .tag{font-size:12px;color:var(--mute);font-weight:400;margin-left:auto}
-.row{display:grid;grid-template-columns:96px 1fr 70px;gap:10px;align-items:center;margin:6px 0}
+.dot{width:9px;height:9px;border-radius:50%;background:#4a4f5c;display:inline-block;flex:none}
+.dot.live{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.row{display:grid;grid-template-columns:92px 1fr 64px;gap:10px;align-items:center;margin:5px 0}
 .bar{height:12px;background:#0a0c10;border-radius:6px;overflow:hidden;position:relative}
 .bar i{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--c,var(--accent));border-radius:6px}
 .bar.signed:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#3a404d}
 .num{font-variant-numeric:tabular-nums;color:var(--mute);text-align:right;font-size:12px}
 .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-input[type=range]{width:100%;accent-color:var(--accent)}
-.sim{opacity:.55}.sim.active{opacity:1}
-.stems{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
-@media(max-width:600px){.stems{grid-template-columns:repeat(2,1fr)}}
-.stem{background:#0f1217;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center}
-.stem .who{font-size:12px;font-weight:650}
-.stem .vbar{height:90px;width:22px;margin:8px auto;background:#0a0c10;border-radius:6px;position:relative;overflow:hidden}
-.stem .vbar i{position:absolute;left:0;right:0;bottom:0;height:0;background:var(--c,var(--accent))}
-.stem label{font-size:12px;color:var(--mute);display:block;margin-top:6px;cursor:pointer}
-.stem input[type=file]{display:none}
-.map{width:100%;border-collapse:collapse}
-.map td{padding:5px 6px;border-bottom:1px solid #222733}
-.map td:first-child{white-space:nowrap}
-.flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(165,139,255,.35),transparent 70%);opacity:0;transition:opacity .4s}
-.flash.on{opacity:1;transition:none}
 .help{color:var(--mute);font-size:13px}
 .help kbd{background:#252a35;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--text)}
-.fx{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12px;letter-spacing:.06em;background:var(--still);color:#0e1014}
+.badge.s0{background:var(--still)}.badge.s1{background:var(--walk)}.badge.s2{background:var(--run)}.badge.s3{background:var(--spin)}
+.badge.big{font-size:22px;padding:6px 18px}
+.lamp{display:inline-block;width:10px;height:10px;border-radius:50%;background:#3a404d;vertical-align:middle}
+.lamp.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.lamp.bad{background:var(--bad)}
+/* play view */
+.now{display:grid;grid-template-columns:1.3fr 1fr 1.2fr;gap:20px;align-items:center}
+@media(max-width:860px){.now{grid-template-columns:1fr}}
+.label{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+.big{font-size:26px;font-weight:700}
+.nowSound{display:flex;gap:14px;align-items:center}
+.swatch{width:54px;height:54px;border-radius:12px;background:var(--accent);flex:none;transition:background .3s}
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:700px){.slots{grid-template-columns:repeat(2,1fr)}}
+.slot{background:#0f1217;border:2px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.slot.on{border-color:var(--accent);box-shadow:0 0 18px rgba(165,139,255,.25)}
+.slot .top{display:flex;align-items:center;gap:8px}
+.slot .n{font-size:12px;color:var(--mute)}
+.slot .name{font-weight:650}
+.slot input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer;margin-left:auto}
+.slot label.file{font-size:12px;color:var(--mute);cursor:pointer;text-decoration:underline}
+.slot input[type=file]{display:none}
+.footrow{display:flex;align-items:center;gap:10px;margin:6px 0}
+.sim button.on{border-color:var(--accent);background:#2e2843}
+.flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(165,139,255,.35),transparent 70%);opacity:0;transition:opacity .5s}
+.flash.on{opacity:1;transition:none}
+/* monitor */
+.monfoot .comps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.monfoot .comps{grid-template-columns:1fr}}
+.comp{background:#0f1217;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.comp.wide{grid-column:1/-1}
+.comp.off{opacity:.45}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+.comp .row{grid-template-columns:62px 1fr 52px;margin:3px 0;font-size:13px}
+canvas.plot{width:100%;height:150px;background:#0a0c10;border-radius:8px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--mute);margin-top:6px}
+.legend label{cursor:pointer}
+.legend i{display:inline-block;width:10px;height:3px;vertical-align:middle;margin-right:4px}
+.consolebar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;font-size:13px}
+.consolebar label{color:var(--mute)}
+pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height:340px;overflow:auto;margin:0;padding:8px 10px;
+  font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#cfd3dc;white-space:pre}
+.sendrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+.sendrow input[type=text]{flex:1;min-width:140px;font-family:ui-monospace,Menlo,monospace}
+.popped{padding:30px;text-align:center;color:var(--mute)}
 </style>
 </head>
 <body>
 <header>
-  <h1>Music Sampling Shoes <span>sampler</span></h1>
-  <button class="primary" id="startBtn">Start music</button>
+  <h1>Sound Effect Shoes</h1>
+  <button class="primary" id="startBtn">Start sound</button>
   <button class="L" id="bleL">Connect Left shoe</button>
   <button class="R" id="bleR">Connect Right shoe</button>
-  <button id="usbBtn" title="Plug a Minima straight into this laptop to test without Bluetooth">USB test</button>
-  <div class="status" id="status">Not connected. Simulator is driving both feet.</div>
+  <button id="usbBtn" title="Plug a Minima straight into this laptop to test without Bluetooth">USB</button>
+  <nav class="tabs"><button data-tab="play" class="on">Play</button><button data-tab="monitor">Monitor</button></nav>
+  <div class="status" id="status">Not connected. Use the simulator buttons, or connect a shoe.</div>
 </header>
 
-<main>
-  <!-- feet -->
-  <section class="panel foot" data-foot="L">
-    <h2><span class="dot" id="dotL"></span> Left player <span class="tag" id="rateL">simulator</span></h2>
-    <div class="row"><span>Pressure</span><div class="bar"><i id="pressL" style="--c:var(--L)"></i></div><span class="num" id="pressLn">0</span></div>
-    <div class="row"><span>Tilt</span><div class="bar signed"><i id="tiltL" style="--c:var(--L)"></i></div><span class="num" id="tiltLn">0</span></div>
-    <div class="row"><span>Shake</span><div class="bar"><i id="shakeL" style="--c:var(--L)"></i></div><span class="num" id="shakeLn">0</span></div>
-    <div class="btns">
-      <button data-cal="flat" data-foot="L" title="Stand normally with the shoe flat, then click">Set: standing flat</button>
-      <button data-cal="air" data-foot="L" title="Lift this foot off the ground, then click">Set: foot lifted</button>
+<!-- ===================== PLAY ===================== -->
+<main id="playView">
+  <section class="panel full now">
+    <div class="nowSound">
+      <div class="swatch" id="nowSwatch"></div>
+      <div><div class="label">Sound</div><div class="big" id="nowName">-</div><div class="help" id="nowSlot"></div></div>
     </div>
-    <h3>Simulator (used when this shoe isn't connected)</h3>
-    <div class="sim" id="simL">
-      <div class="row"><span>Pressure</span><input type="range" min="0" max="4095" value="2000" data-sim="fsr" data-foot="L"><span class="num">raw</span></div>
-      <div class="row"><span>Tilt</span><input type="range" min="-45" max="45" value="0" data-sim="pitch" data-foot="L"><span class="num">deg</span></div>
-      <div class="row"><span>Shake</span><input type="range" min="0" max="500" value="0" data-sim="shake" data-foot="L"><span class="num">deg/s</span></div>
+    <div><div class="label">Movement</div><span class="badge big" id="nowState">STILL</span><div class="help" id="nowTurns"></div></div>
+    <div>
+      <div class="label">Volume</div>
+      <div class="bar" style="height:18px"><i id="nowVolBar"></i></div>
+      <div class="help" id="nowVolTxt">Press Start sound</div>
     </div>
   </section>
 
-  <section class="panel foot" data-foot="R">
-    <h2><span class="dot" id="dotR"></span> Right player <span class="tag" id="rateR">simulator</span></h2>
-    <div class="row"><span>Pressure</span><div class="bar"><i id="pressR" style="--c:var(--R)"></i></div><span class="num" id="pressRn">0</span></div>
-    <div class="row"><span>Tilt</span><div class="bar signed"><i id="tiltR" style="--c:var(--R)"></i></div><span class="num" id="tiltRn">0</span></div>
-    <div class="row"><span>Shake</span><div class="bar"><i id="shakeR" style="--c:var(--R)"></i></div><span class="num" id="shakeRn">0</span></div>
-    <div class="btns">
-      <button data-cal="flat" data-foot="R" title="Stand normally with the shoe flat, then click">Set: standing flat</button>
-      <button data-cal="air" data-foot="R" title="Lift this foot off the ground, then click">Set: foot lifted</button>
-    </div>
-    <h3>Simulator (used when this shoe isn't connected)</h3>
-    <div class="sim" id="simR">
-      <div class="row"><span>Pressure</span><input type="range" min="0" max="4095" value="2000" data-sim="fsr" data-foot="R"><span class="num">raw</span></div>
-      <div class="row"><span>Tilt</span><input type="range" min="-45" max="45" value="0" data-sim="pitch" data-foot="R"><span class="num">deg</span></div>
-      <div class="row"><span>Shake</span><input type="range" min="0" max="500" value="0" data-sim="shake" data-foot="R"><span class="num">deg/s</span></div>
-    </div>
-  </section>
-
-  <!-- mix -->
   <section class="panel full">
-    <h2>The song, in 4 parts <span class="tag" id="srcTag">demo loop (load your own stems below)</span></h2>
-    <div class="stems" id="stems"></div>
-    <h3>Effects</h3>
-    <div class="fx">
-      <div class="row" style="grid-template-columns:60px 1fr"><span>Filter</span><div class="bar"><i id="fxfilter"></i></div></div>
-      <div class="row" style="grid-template-columns:60px 1fr"><span>Speed</span><div class="bar signed"><i id="fxrate"></i></div></div>
-      <div class="row" style="grid-template-columns:60px 1fr"><span>Echo</span><div class="bar"><i id="fxecho"></i></div></div>
-    </div>
+    <h2>The 4 sounds <span class="tag">spin 360 on one or both feet to go to the next one</span></h2>
+    <div class="slots" id="slots"></div>
   </section>
 
-  <!-- mapping -->
+  <section class="panel" id="footL"></section>
+  <section class="panel" id="footR"></section>
+
   <section class="panel">
-    <h2>What each move controls</h2>
-    <table class="map" id="mapTable"></table>
-    <div class="btns">
-      <button id="presetStem">Preset: Stem Player duet</button>
-      <button id="presetFx">Preset: DJ effects</button>
-    </div>
+    <h2>Volume</h2>
+    <div class="row"><span>Walking</span><input type="range" id="walkVol" min="0" max="100"><span class="num" id="walkVolN"></span></div>
+    <div class="row"><span>Running</span><input type="range" id="runVol" min="0" max="100"><span class="num" id="runVolN"></span></div>
+    <label class="help" style="display:block;margin:10px 0 4px"><input type="checkbox" id="requireTurns"> Both feet must take turns stepping (left, right, left...) when both shoes are connected</label>
+    <p class="help">Running plays at the Running level (100% = as loud as this app goes, so turn the laptop volume up too). Standing still for 2 seconds pauses the sound. It picks up where it left off when you move again.</p>
   </section>
 
   <section class="panel">
     <h2>How to play</h2>
     <div class="help">
-      <p><b>Left player</b> controls drums and bass. <b>Right player</b> controls vocals and melody. Standing on your shoe brings your part in, lifting your foot drops it out, and tilting toes up or down brings in your second part.</p>
-      <p><b>Stomp together</b> (both players within a quarter second) to <b>pass the sound</b>: you swap parts. Shaking a foot adds echo.</p>
-      <p>Keyboard for testing: hold <kbd>A</kbd> left stomp, <kbd>L</kbd> right stomp, <kbd>Space</kbd> both stomp.</p>
-      <p>Calibrate each shoe when the wearer puts it on: stand flat and click <i>Set: standing flat</i>, then lift that foot and click <i>Set: foot lifted</i>.</p>
+      <p><b>Walk</b>: normal volume. <b>Run</b>: max volume. <b>Stand still</b> for 2 seconds: the sound pauses. <b>Spin 360</b> on one foot or both: next sound. Both feet spinning together count as one spin.</p>
+      <p>Only steps count. Tilting or shaking a shoe does nothing. With both shoes connected, the feet have to take turns (left, right, left) at walking speed or faster. With one shoe connected, that shoe's own steps count.</p>
+      <p>Keyboard for testing without shoes: <kbd>W</kbd> walk, <kbd>R</kbd> run, <kbd>X</kbd> still, <kbd>S</kbd> spin, <kbd>1</kbd>-<kbd>4</kbd> pick a sound.</p>
     </div>
   </section>
 </main>
+
+<!-- ===================== MONITOR ===================== -->
+<div id="monitorHome" class="hidden">
+  <div class="popped hidden" id="poppedNote">The monitor is open in its own window. <button id="bringBack">Bring it back here</button></div>
+  <section class="monitor" id="monitor">
+    <div class="full" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <h2 style="margin:0">Monitor</h2>
+      <span class="help">Every input from every part of both shoes, live. Grey boxes are parts that aren't sending.</span>
+      <button id="popBtn" style="margin-left:auto">Open in its own window</button>
+    </div>
+    <div id="monL"></div>
+    <div id="monR"></div>
+    <section class="panel full">
+      <h2>Serial monitor <span class="tag">Bluetooth packets, USB lines, and what the app did</span></h2>
+      <div class="consolebar">
+        <label>Show <select id="logShow"><option value="all">everything</option><option value="L">left shoe</option><option value="R">right shoe</option><option value="events">events only</option></select></label>
+        <label>Data lines <select id="logRate"><option value="all">every one</option><option value="5">5 per second</option><option value="none">none</option></select></label>
+        <label><input type="checkbox" id="logPause"> pause</label>
+        <label><input type="checkbox" id="logScroll" checked> autoscroll</label>
+        <button class="small" id="logClear">Clear</button>
+        <button class="small" id="logSave">Save log</button>
+      </div>
+      <pre class="log" id="log"></pre>
+      <div class="sendrow">
+        <select id="sendFoot"><option value="any">USB shoe</option><option value="L">Left (USB)</option><option value="R">Right (USB)</option></select>
+        <input type="text" id="sendText" placeholder="type a key for the Minima, e.g. h, then Enter">
+        <button id="sendBtn">Send</button>
+      </div>
+      <div class="sendrow">
+        <span class="help">Debug keys:</span>
+        <button class="small" data-cmd="0" title="the line the app reads">0 app</button>
+        <button class="small" data-cmd="1">1 pressure</button>
+        <button class="small" data-cmd="2">2 gyro</button>
+        <button class="small" data-cmd="3">3 steps</button>
+        <button class="small" data-cmd="4">4 spin</button>
+        <button class="small" data-cmd="5">5 state</button>
+        <button class="small" data-cmd="6">6 XIAO</button>
+        <button class="small" data-cmd="c" title="keep the shoe still">c gyro offset</button>
+        <button class="small" data-cmd="h">h help</button>
+      </div>
+      <p class="help">Keys only reach a Minima plugged in by USB (Bluetooth only goes shoe to laptop). The boxes above update in key 0 (app) mode. Close this page before using the Arduino Serial Monitor, since only one program can open the USB port.</p>
+    </section>
+  </section>
+</div>
 <div class="flash" id="flash"></div>
 
 <script>
 // ===================== constants =====================
-const SERVICE_UUID = '7b1e0001-5d2c-4c3b-9a41-50a1c5717e00';
+const SERVICE_UUID = '7b1e0001-5d2c-4c3b-9a41-50a1c5717e00';   // must match xiao_radio.ino
 const DATA_UUID    = '7b1e0002-5d2c-4c3b-9a41-50a1c5717e00';
-const NUS_SERVICE  = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';   // Bluefruit LE Shield (Nordic UART)
-const NUS_TX       = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
-const STEMS = [
-  {id:'drums',  name:'Drums',  owner:'L'},
-  {id:'bass',   name:'Bass',   owner:'L'},
-  {id:'vocals', name:'Vocals', owner:'R'},
-  {id:'other',  name:'Melody', owner:'R'},
+const STATES = ['STILL', 'WALK', 'RUN', 'SPIN'];
+const STILL = 0, WALK = 1, RUN = 2, SPIN = 3;
+const LIVE_MS = 1000;            // no data for this long = shoe not live (simulator takes over)
+const SPIN_TOGETHER_MS = 1200;   // both feet spinning this close together = one spin
+const PLOT_MS = 10000;
+const LOG_MAX = 4000;
+const LOOP_SEC = 8, SR = 44100;
+const FOOT_NAME = {L:'Left', R:'Right'};
+// Taking turns (both shoes connected): a step on one foot right after a step on the other.
+const TURN_MIN_MS = 150, TURN_MAX_MS = 1500;   // gap between a left step and a right step
+const TURN_WINDOW_MS = 3000, TURNS_NEEDED = 2;  // this many turns in this long = walking
+const STOP_MS = 2000;                           // no step for this long = still
+
+const DEFAULT_SLOTS = [
+  {name:'Rain',       color:'#4a90e2'},
+  {name:'Ocean',      color:'#2ec4b6'},
+  {name:'Wind chimes',color:'#f2c94c'},
+  {name:'Campfire',   color:'#f2994a'},
 ];
-const DEAD = 0.10;        // tilt dead zone so a flat foot reads 0
-const STOMP = 1.6;        // pressure 60% above standing = stomp
-const STOMP_COOLDOWN_MS = 1500;  // after a swap, ignore stomps for this long
-const TOGETHER_MS = 250;  // how close two stomps must be
 
-const INPUTS = [
-  {key:'Lpress', label:'Left: pressure',  signed:false},
-  {key:'Ltilt',  label:'Left: tilt',      signed:true},
-  {key:'Rpress', label:'Right: pressure', signed:false},
-  {key:'Rtilt',  label:'Right: tilt',     signed:true},
-  {key:'shake',  label:'Either: shake',   signed:false},
-];
-const TARGETS = [['none','nothing'],['drums','Drums volume'],['bass','Bass volume'],['vocals','Vocals volume'],['other','Melody volume'],['filter','Filter sweep'],['rate','Speed / pitch'],['echo','Echo']];
-const EVENT_TARGETS = [['pass','Pass the sound (swap parts)'],['drop','Drop (cut all for a beat)'],['vocalcut','Vocal cut on/off'],['none','nothing']];
-const PRESETS = {
-  stem: {map:{Lpress:'drums',Ltilt:'bass',Rpress:'vocals',Rtilt:'other',shake:'echo'}, inv:{}, stomp:'pass'},
-  fx:   {map:{Lpress:'drums',Ltilt:'filter',Rpress:'vocals',Rtilt:'rate',shake:'echo'}, inv:{}, stomp:'drop'},
-};
+function load(k, d){ try{ const v = localStorage.getItem('ses_'+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
+function save(k, v){ try{ localStorage.setItem('ses_'+k, JSON.stringify(v)); }catch(e){} }
+const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
+const $ = id => document.getElementById(id);
 
-// ===================== storage (optional) =====================
-function load(k, d){ try{ const v = localStorage.getItem('ss_'+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
-function save(k, v){ try{ localStorage.setItem('ss_'+k, JSON.stringify(v)); }catch(e){} }
-
-// ===================== foot state =====================
+// ===================== feet =====================
+function emptyData(){ return {state:0, spins:0, flags:0, spinPct:0, fsr:0, steps:0, stepMs:0, ax:0, ay:0, az:0, yaw:0, gyro:0}; }
 function mkFoot(id){
-  return { id, raw:{fsr:2000,pitch:0,roll:0,shake:0}, lastLive:0, pkts:0, rate:0,
-    cal: load('cal'+id, {air:80, stand:2000, neutral:0, range:30}),
-    sim:{fsr:2000,pitch:0,shake:0}, keyStomp:false,
-    press:0, tilt:0, shakeN:0, prevStomp:false, stompT:-1e9, src:'sim' };
+  return { id, d:emptyData(), src:'', lastLive:0, pkts:0, rate:0, hist:[],
+    lastSpins:null, lastSteps:null, lastState:null, sim:{state:STILL, spinUntil:0, spins:0} };
 }
 const feet = {L:mkFoot('L'), R:mkFoot('R')};
-let swapped = false, vocalCut = false, dropUntil = 0, lastFired = -1e9;
+const isLive = (f, now = performance.now()) => now - f.lastLive < LIVE_MS;
+function footState(f, now = performance.now()){
+  if (isLive(f, now)) return f.d.state;
+  return now < f.sim.spinUntil ? SPIN : f.sim.state;
+}
 
-function feed(id, fsr, pitch, roll, shake, src){
-  const f = feet[id];
-  f.raw = {fsr, pitch, roll, shake};
-  f.lastLive = performance.now(); f.pkts++; f.src = src;
+// Every packet from a shoe (Bluetooth or USB) comes through here.
+function ingest(id, d, src, rawLine){
+  const f = feet[id], now = performance.now();
+  f.d = d; f.src = src; f.lastLive = now; f.pkts++;
+  f.hist.push({t:now, fsr:d.fsr, yaw:d.yaw, g:Math.hypot(d.ax, d.ay, d.az)/100, gyro:d.gyro, down:(d.flags & 2) ? 1 : 0});
+  while (f.hist.length && f.hist[0].t < now - PLOT_MS) f.hist.shift();
+  logData(id, src, rawLine || packetToCsv(id, d));
+  if (f.lastState !== d.state){ if (f.lastState !== null) logEvent(id, `${FOOT_NAME[id]} shoe: ${STATES[d.state] || d.state}`); f.lastState = d.state; }
+  if (f.lastSteps === null) f.lastSteps = d.steps;
+  const newSteps = (d.steps - f.lastSteps + 65536) % 65536;
+  f.lastSteps = d.steps;
+  if (newSteps > 0 && newSteps < 10) recordStep(id, now);
+  if (f.lastSpins === null) f.lastSpins = d.spins;
+  const n = (d.spins - f.lastSpins + 256) % 256;
+  f.lastSpins = d.spins;
+  if (n > 0 && n < 10) for (let i = 0; i < n; i++) onSpin(id);
+}
+
+// 20 bytes, see minima_foot/packet.h
+function decodePacket(v){
+  return { state:v.getUint8(0), spins:v.getUint8(1), flags:v.getUint8(2), spinPct:v.getUint8(3),
+    fsr:v.getUint16(4,true), steps:v.getUint16(6,true), stepMs:v.getUint16(8,true),
+    ax:v.getInt16(10,true), ay:v.getInt16(12,true), az:v.getInt16(14,true),
+    yaw:v.getInt16(16,true), gyro:v.getUint16(18,true) };
+}
+// USB line: FOOT,state,spins,spinPct,fsr,steps,stepMs,ax,ay,az,yawRate,gyro,flags
+function parseCsv(p){
+  const n = p.slice(1).map(Number);
+  return { state:n[0], spins:n[1], spinPct:n[2], fsr:n[3], steps:n[4], stepMs:n[5], ax:n[6], ay:n[7], az:n[8], yaw:n[9], gyro:n[10], flags:n[11] };
+}
+function packetToCsv(id, d){
+  return [id, d.state, d.spins, d.spinPct, d.fsr, d.steps, d.stepMs, d.ax, d.ay, d.az, d.yaw, d.gyro, d.flags].join(',');
+}
+
+// ===================== what the shoes mean for the sound =====================
+let lastStep = null, turns = [], requireTurns = load('requireTurns', true), wasTurning = false;
+function recordStep(id, t){
+  const gap = lastStep ? t - lastStep.t : Infinity, otherFoot = lastStep && lastStep.foot !== id;
+  if (otherFoot && gap < TURN_MIN_MS){
+    // both feet landed together (a hop): neither step is a turn
+    if (lastStep.turn) turns.pop();
+    lastStep = {foot:id, t, turn:false, together:true};
+    return;
+  }
+  const turn = otherFoot && !lastStep.together && gap <= TURN_MAX_MS;
+  if (turn) turns.push(t);
+  lastStep = {foot:id, t, turn, together:false};
+  while (turns.length && turns[0] < t - TURN_WINDOW_MS) turns.shift();
+}
+const recentTurns = (now = performance.now()) => turns.filter(t => t > now - TURN_WINDOW_MS).length;
+const feetTakingTurns = (now = performance.now()) =>
+  !!lastStep && now - lastStep.t < STOP_MS && recentTurns(now) >= TURNS_NEEDED;
+const usingTurns = (now = performance.now()) => requireTurns && isLive(feet.L, now) && isLive(feet.R, now);
+
+function overallState(now = performance.now()){
+  const s = ['L','R'].map(id => footState(feet[id], now));
+  if (usingTurns(now)){
+    // both shoes connected: only left-right-left stepping plays sound
+    if (!feetTakingTurns(now)) return s.includes(SPIN) ? WALK : STILL;
+    return s.includes(RUN) ? RUN : WALK;
+  }
+  if (s.includes(RUN)) return RUN;
+  if (s.includes(WALK) || s.includes(SPIN)) return WALK;
+  return STILL;
+}
+const anySpinning = (now = performance.now()) => ['L','R'].some(id => footState(feet[id], now) === SPIN);
+
+let lastSwitch = {t:-1e9, foot:null};
+function onSpin(id){
+  const now = performance.now();
+  logEvent(id, `${FOOT_NAME[id]} shoe: 360 SPIN`);
+  if (lastSwitch.foot && lastSwitch.foot !== id && now - lastSwitch.t < SPIN_TOGETHER_MS){
+    logEvent(null, 'both feet spun together, counted as one spin');
+    lastSwitch = {t:-1e9, foot:null};
+    return;
+  }
+  lastSwitch = {t:now, foot:id};
+  selectSound((active + 1) % 4, `${FOOT_NAME[id].toLowerCase()} foot spin`);
 }
 
 // ===================== audio =====================
-let ctx = null, mix, filter, master, delay, fb, wet;
-const stemNodes = {};      // id -> {buffer, gain, source}
-let playing = false, usingDemo = true;
+let ctx = null, master, comp, started = false, paused = true, stillSince = 0, active = load('active', 0);
+const slots = load('slots', DEFAULT_SLOTS).map((s, i) => ({...DEFAULT_SLOTS[i], ...s, buffer:null, gain:null, source:null, file:null}));
+const vol = {walk:load('walkVol', 50), run:load('runVol', 100)};
 
 function ensureCtx(){
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
-  mix = ctx.createGain();
-  filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 20000; filter.Q.value = 0.8;
-  master = ctx.createGain(); master.gain.value = 0.9;
-  delay = ctx.createDelay(2.0); delay.delayTime.value = 0.375;
-  fb = ctx.createGain(); fb.gain.value = 0.3;
-  wet = ctx.createGain(); wet.gain.value = 0;
-  mix.connect(filter); filter.connect(master);
-  filter.connect(wet); wet.connect(delay); delay.connect(fb); fb.connect(delay); delay.connect(master);
-  master.connect(ctx.destination);
-  for (const s of STEMS){ const g = ctx.createGain(); g.gain.value = 0; g.connect(mix); stemNodes[s.id] = {buffer:null, gain:g, source:null}; }
+  comp = ctx.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 4;
+  master = ctx.createGain(); master.gain.value = 0;
+  master.connect(comp); comp.connect(ctx.destination);
+  for (const s of slots){ s.gain = ctx.createGain(); s.gain.gain.value = 0; s.gain.connect(master); }
 }
 
-function startSources(){
-  const t = ctx.currentTime + 0.08;
-  for (const s of STEMS){
-    const n = stemNodes[s.id];
-    if (n.source){ try{ n.source.stop(); }catch(e){} n.source.disconnect(); n.source = null; }
-    if (!n.buffer) continue;
-    const src = ctx.createBufferSource(); src.buffer = n.buffer; src.loop = true;
-    src.connect(n.gain); src.start(t); n.source = src;
-  }
-  playing = true;
-}
-
-// ---------- demo loop: 4 bars at 120 bpm, rendered offline ----------
-const SR = 44100, BPM = 120, BEAT = 60/BPM, BARS = 4, LEN = BARS*4*BEAT;
-const midi = m => 440*Math.pow(2,(m-69)/12);
-function noiseBuf(oc){ const b = oc.createBuffer(1, oc.sampleRate*0.5, oc.sampleRate); const d = b.getChannelData(0); for (let i=0;i<d.length;i++) d[i] = Math.random()*2-1; return b; }
-function env(oc, node, t, vol, a, dur){ const g = oc.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+a); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); node.connect(g); g.connect(oc.destination); return g; }
-function tone(oc, type, f, t, dur, vol, cut){ const o = oc.createOscillator(); o.type = type; o.frequency.value = f; const lp = oc.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = cut; o.connect(lp); env(oc, lp, t, vol, 0.01, dur); o.start(t); o.stop(t+dur+0.05); return o; }
-function hit(oc, nb, t, type, freq, dur, vol){ const s = oc.createBufferSource(); s.buffer = nb; const f = oc.createBiquadFilter(); f.type = type; f.frequency.value = freq; s.connect(f); env(oc, f, t, vol, 0.002, dur); s.start(t); s.stop(t+dur+0.05); }
-async function render(fn){ const oc = new OfflineAudioContext(2, Math.round(SR*LEN), SR); fn(oc); return oc.startRendering(); }
-async function buildDemo(){
-  const chords = [[57,60,64],[53,57,60],[60,64,67],[55,59,62]]; // Am F C G
-  const roots = [45,41,48,43];
-  const lead = [76,74,72,69, 72,74,76,79, 76,74,72,74, 71,72,74,76];
-  const drums = await render(oc => { const nb = noiseBuf(oc);
-    for (let b=0;b<BARS*4;b++){ const t = b*BEAT;
-      const o = oc.createOscillator(); o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(42,t+0.12); env(oc,o,t,0.9,0.003,0.35); o.start(t); o.stop(t+0.4);
-      if (b%2===1) hit(oc,nb,t,'bandpass',1800,0.18,0.5);
-      hit(oc,nb,t,'highpass',8000,0.04,0.18); hit(oc,nb,t+BEAT/2,'highpass',8000,0.04,0.12);
-    }});
-  // round sub bass: a deep sine plus a soft triangle an octave up (so laptop speakers can still play it),
-  // one long note per beat, with a step up to the fifth on beat 4
-  const bass = await render(oc => { for (let bar=0;bar<BARS;bar++) for (let q=0;q<4;q++){ const t = (bar*4 + q)*BEAT; const m = roots[bar] + (q===3 ? 7 : 0); tone(oc,'sine',midi(m-12),t,BEAT*0.85,0.75,400); tone(oc,'triangle',midi(m),t,BEAT*0.85,0.45,600); } });
-  const vocals = await render(oc => { lead.forEach((m,i) => { const t = i*BEAT; const o = tone(oc,'square',midi(m),t,BEAT*0.9,0.4,2600); const lfo = oc.createOscillator(); lfo.frequency.value = 5.5; const lg = oc.createGain(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.frequency); lfo.start(t); lfo.stop(t+BEAT); }); });
-  const other = await render(oc => { chords.forEach((ch,bar) => ch.forEach(m => { const t = bar*4*BEAT; const o = oc.createOscillator(); o.type='triangle'; o.frequency.value = midi(m); const g = oc.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.18,t+0.3); g.gain.linearRampToValueAtTime(0.0001,t+4*BEAT); o.connect(g); g.connect(oc.destination); o.start(t); o.stop(t+4*BEAT+0.05); })); });
-  return {drums, bass, vocals, other};
+function startSlot(i){
+  const s = slots[i];
+  if (s.source){ try{ s.source.stop(); }catch(e){} s.source.disconnect(); s.source = null; }
+  if (!s.buffer) return;
+  const src = ctx.createBufferSource(); src.buffer = s.buffer; src.loop = true;
+  src.connect(s.gain); src.start(); s.source = src;
 }
 
 async function start(){
   ensureCtx();
   await ctx.resume();
-  if (STEMS.some(s => !stemNodes[s.id].buffer)){
-    setStatus('Building demo loop...');
-    const demo = await buildDemo();
-    for (const s of STEMS) if (!stemNodes[s.id].buffer) stemNodes[s.id].buffer = demo[s.id];
+  if (slots.some(s => !s.buffer)){
+    setStatus('Making the 4 sounds...');
+    const made = await buildDefaultSounds();
+    slots.forEach((s, i) => { if (!s.buffer) s.buffer = made[i]; });
   }
-  startSources();
-  document.getElementById('startBtn').textContent = 'Restart music';
+  slots.forEach((s, i) => { startSlot(i); s.gain.gain.value = i === active ? 1 : 0; });
+  started = true; paused = false;
+  $('startBtn').textContent = 'Restart sound';
+  logApp('sound started');
   updateStatus();
 }
 
-async function loadStem(id, file){
+function selectSound(i, why){
+  active = i; save('active', active);
+  if (ctx) slots.forEach((s, k) => s.gain.gain.setTargetAtTime(k === i ? 1 : 0, ctx.currentTime, 0.12));
+  if (ctx && !paused) swoosh();
+  const fl = $('flash'); fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 80);
+  logApp(`sound ${i + 1}: ${slots[i].name}` + (why ? ` (${why})` : ''));
+  drawSlots();
+}
+
+// Walk = walk volume, run = run volume, still (both shoes) = fade out, then pause.
+function applyVolume(){
+  if (!started) return;
+  const now = performance.now(), st = overallState(now);
+  const target = st === RUN ? vol.run/100 : st === WALK ? vol.walk/100 : 0;
+  if (target > 0){
+    stillSince = 0;
+    if (paused){ paused = false; ctx.resume(); logApp('sound resumed'); }
+    master.gain.setTargetAtTime(target, ctx.currentTime, 0.15);
+  } else {
+    if (!stillSince) stillSince = now;
+    master.gain.setTargetAtTime(0, ctx.currentTime, 0.12);
+    if (!paused && now - stillSince > 700){ paused = true; ctx.suspend(); logApp('sound paused (no movement)'); }
+  }
+}
+
+function swoosh(){
+  const t = ctx.currentTime, len = 0.45;
+  const b = ctx.createBuffer(1, Math.round(ctx.sampleRate*len), ctx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
+  const src = ctx.createBufferSource(); src.buffer = b;
+  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2;
+  bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(5000, t + len*0.8);
+  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  src.connect(bp); bp.connect(g); g.connect(comp); src.start(t); src.stop(t + len);
+}
+
+async function loadSoundFile(i, file){
   ensureCtx();
   try{
-    const buf = await ctx.decodeAudioData(await file.arrayBuffer());
-    stemNodes[id].buffer = buf; usingDemo = false;
-    document.getElementById('srcTag').textContent = 'your stems';
-    document.querySelector(`[data-stemfile="${id}"]`).textContent = file.name.slice(0,22);
-    if (playing) startSources();
-  }catch(e){ setStatus('Could not read '+file.name+'. Try a WAV or MP3.'); }
+    slots[i].buffer = await ctx.decodeAudioData(await file.arrayBuffer());
+    slots[i].name = file.name.replace(/\.[^.]+$/, '').slice(0, 24); slots[i].file = file.name;
+    saveSlots();
+    if (started) startSlot(i);
+    logApp(`sound ${i + 1} loaded from ${file.name}`);
+    drawSlots();
+  }catch(e){ setStatus('Could not read ' + file.name + '. Try a WAV or MP3.'); }
 }
+function saveSlots(){ save('slots', slots.map(s => ({name:s.name, color:s.color}))); }
 
-// ===================== input -> sound =====================
-const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
-function computeFeet(now){
-  for (const id of ['L','R']){
-    const f = feet[id], live = now - f.lastLive < 600;
-    const src = live ? f.raw : { fsr: f.keyStomp ? f.cal.stand*1.7 : f.sim.fsr, pitch: f.sim.pitch, shake: f.sim.shake };
-    const c = f.cal;
-    f.press = clamp((src.fsr - c.air) / Math.max(1, c.stand - c.air), 0, 2);
-    // tilt in any direction: distance from the "standing flat" angle,
-    // signed by toe up / toe down (sign only matters for the Speed effect)
-    const dp = src.pitch - c.neutral, dr = (src.roll || 0) - (c.neutralRoll || 0);
-    let t = (dp < 0 ? -1 : 1) * Math.hypot(dp, dr) / c.range;
-    t = Math.abs(t) < DEAD ? 0 : Math.sign(t) * (Math.abs(t) - DEAD) / (1 - DEAD);
-    f.tilt = clamp(t, -1, 1);
-    f.shakeN = clamp(src.shake / 400, 0, 1);
-    f.live = live;
-    const st = f.press > STOMP;
-    if (st && !f.prevStomp) f.stompT = now;
-    f.prevStomp = st;
+// ---------- the 4 built-in sounds, made once when you press Start ----------
+async function render(fn){ const oc = new OfflineAudioContext(2, SR*LOOP_SEC, SR); fn(oc); return oc.startRendering(); }
+function noise(oc, sec, brown){
+  const b = oc.createBuffer(1, Math.round(oc.sampleRate*sec), oc.sampleRate), d = b.getChannelData(0);
+  let last = 0;
+  for (let i = 0; i < d.length; i++){ const w = Math.random()*2 - 1; if (brown){ last = (last + 0.02*w)/1.02; d[i] = last*3.5; } else d[i] = w; }
+  return b;
+}
+function chain(oc, nodes){ for (let i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i+1]); nodes[nodes.length-1].connect(oc.destination); return nodes[0]; }
+function filt(oc, type, f, q){ const n = oc.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q) n.Q.value = q; return n; }
+function gainNode(oc, v){ const g = oc.createGain(); g.gain.value = v; return g; }
+function pan(oc, p){ const n = oc.createStereoPanner(); n.pan.value = p; return n; }
+function burst(oc, nb, t, dur, peak, filterType, freq, q, p){
+  const s = oc.createBufferSource(); s.buffer = nb;
+  const g = oc.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.001); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  chain(oc, [s, filt(oc, filterType, freq, q), g, pan(oc, p)]);
+  s.start(t, Math.random()*0.5); s.stop(t + dur + 0.01);
+}
+// blend the end into the start so the loop has no click
+function loopable(buf){
+  const N = Math.round(0.3*buf.sampleRate), L = buf.length - N;
+  const out = new AudioBuffer({numberOfChannels:buf.numberOfChannels, length:L, sampleRate:buf.sampleRate});
+  for (let c = 0; c < buf.numberOfChannels; c++){
+    const s = buf.getChannelData(c), d = out.getChannelData(c);
+    d.set(s.subarray(0, L));
+    for (let i = 0; i < N; i++){ const a = Math.sin(i/N*Math.PI/2), b = Math.cos(i/N*Math.PI/2); d[i] = s[i]*a + s[L+i]*b; }
   }
-  const L = feet.L, R = feet.R;
-  if (Math.abs(L.stompT - R.stompT) < TOGETHER_MS && Math.max(L.stompT, R.stompT) > lastFired && now - lastFired > STOMP_COOLDOWN_MS){
-    lastFired = now; fireStomp();
-  }
+  return out;
+}
+const R = Math.random;
+async function buildDefaultSounds(){
+  const rain = await render(oc => {
+    const nb = noise(oc, LOOP_SEC + 1);
+    const s = oc.createBufferSource(); s.buffer = nb;
+    chain(oc, [s, filt(oc,'highpass',500), filt(oc,'lowpass',3500), gainNode(oc,0.3)]); s.start(0);
+    const short = noise(oc, 1);
+    for (let i = 0; i < 900; i++) burst(oc, short, R()*LOOP_SEC, 0.008 + R()*0.03, 0.04 + R()*R()*0.35, 'bandpass', 1500 + R()*5500, 1.5, R()*2 - 1);
+  });
+  const ocean = await render(oc => {
+    const curve = (fn) => { const c = new Float32Array(800); for (let k = 0; k < c.length; k++){ const t = k/(c.length-1)*LOOP_SEC; c[k] = fn((t % 4)/4); } return c; };
+    [[-0.5, 0], [0.5, 0.5]].forEach(([p, off]) => {
+      const s1 = oc.createBufferSource(); s1.buffer = noise(oc, LOOP_SEC + 1);
+      const g1 = oc.createGain(); g1.gain.setValueCurveAtTime(curve(ph => 0.06 + 0.55*Math.pow(Math.sin(Math.PI*((ph + off/4) % 1)), 2)), 0, LOOP_SEC);
+      chain(oc, [s1, filt(oc,'lowpass',650), g1, pan(oc, p)]); s1.start(0);
+      const s2 = oc.createBufferSource(); s2.buffer = noise(oc, LOOP_SEC + 1);
+      const g2 = oc.createGain(); g2.gain.setValueCurveAtTime(curve(ph => 0.01 + 0.22*Math.pow(Math.max(0, Math.sin(Math.PI*((ph + off/4 + 0.85) % 1))), 6)), 0, LOOP_SEC);
+      chain(oc, [s2, filt(oc,'bandpass',2600,0.7), g2, pan(oc, p)]); s2.start(0);
+    });
+  });
+  const chimes = await render(oc => {
+    const notes = [72, 74, 76, 79, 81, 84, 86, 88];
+    const s = oc.createBufferSource(); s.buffer = noise(oc, LOOP_SEC + 1);
+    chain(oc, [s, filt(oc,'lowpass',400), gainNode(oc,0.05)]); s.start(0);
+    for (let i = 0; i < 18; i++){
+      const t = 0.05 + R()*(LOOP_SEC - 0.6), f = 440*Math.pow(2, (notes[Math.floor(R()*notes.length)] - 69)/12), p = R()*1.6 - 0.8;
+      [[1, 1], [2.76, 0.35], [5.4, 0.15]].forEach(([mult, amp]) => {
+        const o = oc.createOscillator(); o.frequency.value = f*mult;
+        const g = oc.createGain(); const dec = 2.8/mult;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.13*amp, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
+        chain(oc, [o, g, pan(oc, p)]); o.start(t); o.stop(t + dec + 0.05);
+      });
+    }
+  });
+  const fire = await render(oc => {
+    const s = oc.createBufferSource(); s.buffer = noise(oc, LOOP_SEC + 1, true);
+    chain(oc, [s, filt(oc,'lowpass',500), gainNode(oc,0.55)]); s.start(0);
+    const short = noise(oc, 1);
+    for (let i = 0; i < 380; i++) burst(oc, short, R()*LOOP_SEC, 0.002 + R()*0.012, 0.03 + Math.pow(R(), 3)*0.6, 'bandpass', 800 + R()*3500, 2, R()*1.2 - 0.6);
+    for (let i = 0; i < 14; i++) burst(oc, short, R()*LOOP_SEC, 0.04, 0.5, 'lowpass', 1500, 0.7, R() - 0.5);
+  });
+  return [rain, ocean, chimes, fire].map(loopable);
 }
 
-function fireStomp(){
-  const what = document.getElementById('stompSel').value;
-  if (what === 'pass') swapped = !swapped;
-  else if (what === 'drop' && ctx) dropUntil = ctx.currentTime + BEAT*2;
-  else if (what === 'vocalcut') vocalCut = !vocalCut;
-  if (what !== 'none'){ const fl = document.getElementById('flash'); fl.classList.add('on'); setTimeout(()=>fl.classList.remove('on'), 60); }
-}
-
-function inputValues(){
-  // when passed, each player's moves drive the other player's parts
-  const A = swapped ? feet.R : feet.L, B = swapped ? feet.L : feet.R;
-  return { Lpress:A.press, Ltilt:A.tilt, Rpress:B.press, Rtilt:B.tilt, shake:Math.max(feet.L.shakeN, feet.R.shakeN) };
-}
-
-let levels = {drums:0,bass:0,vocals:0,other:0}, fxv = {filter:0,rate:0,echo:0};
-function applyAudio(){
-  const v = inputValues(), T = {};
-  for (const inp of INPUTS){
-    const tgt = document.getElementById('map_'+inp.key).value; if (tgt === 'none') continue;
-    const inv = document.getElementById('inv_'+inp.key).checked;
-    let x = v[inp.key];
-    if (tgt === 'rate'){ x = inp.signed ? x : clamp(x,0,1)*2-1; if (inv) x = -x; T.rate = (T.rate||0) + x; continue; }
-    x = clamp(Math.abs(x), 0, 1); if (inv) x = 1 - x;
-    T[tgt] = T[tgt] == null ? x : Math.max(T[tgt], x);
-  }
-  for (const s of STEMS){
-    let g = T[s.id] == null ? 1 : T[s.id];
-    if (s.id === 'vocals' && vocalCut) g = 0;
-    if (ctx && ctx.currentTime < dropUntil) g = 0;
-    levels[s.id] = g;
-  }
-  fxv.filter = T.filter || 0; fxv.rate = clamp(T.rate || 0, -1, 1); fxv.echo = T.echo || 0;
-  if (!ctx) return;
-  const now = ctx.currentTime;
-  for (const s of STEMS) stemNodes[s.id].gain.gain.setTargetAtTime(levels[s.id], now, 0.03);
-  filter.frequency.setTargetAtTime(20000 * Math.pow(0.01, fxv.filter), now, 0.05);
-  const rate = Math.pow(2, fxv.rate * 0.5);
-  for (const s of STEMS){ const src = stemNodes[s.id].source; if (src) src.playbackRate.setTargetAtTime(rate, now, 0.05); }
-  wet.gain.setTargetAtTime(fxv.echo * 0.7, now, 0.05);
-  fb.gain.setTargetAtTime(0.25 + 0.35 * fxv.echo, now, 0.05);
-}
-
-// ===================== UI =====================
-function buildUI(){
-  const wrap = document.getElementById('stems');
-  wrap.innerHTML = STEMS.map(s => `
-    <div class="stem" id="stem_${s.id}">
-      <div class="who" id="who_${s.id}"></div>
-      <div class="vbar"><i id="lvl_${s.id}"></i></div>
-      <div>${s.name}</div>
-      <label>Load file<input type="file" accept="audio/*" data-stem="${s.id}"></label>
-      <div class="num" style="text-align:center" data-stemfile="${s.id}">demo</div>
+// ===================== play view =====================
+function buildPlay(){
+  $('slots').innerHTML = slots.map((s, i) => `
+    <div class="slot" id="slot${i}">
+      <div class="top"><span class="n">${i + 1}</span><span class="name" id="slotName${i}"></span>
+        <input type="color" id="slotColor${i}" title="Color for this sound (the color sensor will use this in the next version)"></div>
+      <div class="btns" style="margin-top:2px">
+        <button class="small" data-pick="${i}">Play this</button>
+        <label class="file">Load file<input type="file" accept="audio/*" data-file="${i}"></label>
+      </div>
+      <div class="num" style="text-align:left" id="slotFile${i}">built-in</div>
     </div>`).join('');
-  wrap.querySelectorAll('input[type=file]').forEach(el => el.addEventListener('change', e => { if (e.target.files[0]) loadStem(el.dataset.stem, e.target.files[0]); }));
+  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => selectSound(+b.dataset.pick, 'clicked'));
+  document.querySelectorAll('[data-file]').forEach(el => el.onchange = e => { if (e.target.files[0]) loadSoundFile(+el.dataset.file, e.target.files[0]); });
+  slots.forEach((s, i) => { const c = $('slotColor'+i); c.value = s.color; c.oninput = () => { s.color = c.value; saveSlots(); drawSlots(); }; });
 
-  const saved = load('map', PRESETS.stem);
-  const tbl = document.getElementById('mapTable');
-  tbl.innerHTML = INPUTS.map(inp => `<tr><td>${inp.label}</td><td><select id="map_${inp.key}">${TARGETS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></td><td><label class="help"><input type="checkbox" id="inv_${inp.key}"> flip</label></td></tr>`).join('')
-    + `<tr><td>Both stomp together</td><td colspan="2"><select id="stompSel">${EVENT_TARGETS.map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select></td></tr>`;
-  applyPreset(saved);
-  tbl.addEventListener('change', () => save('map', readMap()));
-  document.getElementById('presetStem').onclick = () => { applyPreset(PRESETS.stem); save('map', readMap()); };
-  document.getElementById('presetFx').onclick = () => { applyPreset(PRESETS.fx); save('map', readMap()); };
-
-  document.querySelectorAll('[data-sim]').forEach(el => el.addEventListener('input', () => { feet[el.dataset.foot].sim[el.dataset.sim] = +el.value; }));
-  document.querySelectorAll('[data-cal]').forEach(el => el.addEventListener('click', () => calibrate(el.dataset.foot, el.dataset.cal)));
-}
-function applyPreset(p){
-  for (const inp of INPUTS){ document.getElementById('map_'+inp.key).value = (p.map||{})[inp.key] || 'none'; document.getElementById('inv_'+inp.key).checked = !!(p.inv||{})[inp.key]; }
-  document.getElementById('stompSel').value = p.stomp || 'pass';
-}
-function readMap(){
-  const p = {map:{}, inv:{}, stomp:document.getElementById('stompSel').value};
-  for (const inp of INPUTS){ p.map[inp.key] = document.getElementById('map_'+inp.key).value; p.inv[inp.key] = document.getElementById('inv_'+inp.key).checked; }
-  return p;
-}
-function calibrate(id, kind){
-  const f = feet[id], live = performance.now() - f.lastLive < 600;
-  const src = live ? f.raw : {fsr:f.sim.fsr, pitch:f.sim.pitch};
-  if (kind === 'flat'){ f.cal.stand = Math.max(src.fsr, f.cal.air + 50); f.cal.neutral = src.pitch; f.cal.neutralRoll = src.roll || 0; }
-  else { f.cal.air = Math.min(src.fsr, f.cal.stand - 50); }
-  save('cal'+id, f.cal);
-  setStatus(`${id === 'L' ? 'Left' : 'Right'} shoe: ${kind === 'flat' ? 'standing' : 'lifted'} value saved (${Math.round(src.fsr)}).`);
-}
-
-function setBar(id, v, signed){
-  const el = document.getElementById(id); if (!el) return;
-  if (signed){ const w = Math.abs(v)*50; el.style.width = w+'%'; el.style.left = (v<0 ? 50-w : 50)+'%'; }
-  else el.style.width = clamp(v,0,1)*100+'%';
-}
-function draw(){
   for (const id of ['L','R']){
-    const f = feet[id];
-    setBar('press'+id, f.press/1.6); setBar('tilt'+id, f.tilt, true); setBar('shake'+id, f.shakeN);
-    document.getElementById('press'+id+'n').textContent = f.press.toFixed(2);
-    document.getElementById('tilt'+id+'n').textContent = f.tilt.toFixed(2);
-    document.getElementById('shake'+id+'n').textContent = f.shakeN.toFixed(2);
-    document.getElementById('dot'+id).classList.toggle('live', f.live);
-    document.getElementById('sim'+id).classList.toggle('active', !f.live);
-    document.getElementById('rate'+id).textContent = f.live ? `${f.src}, ${f.rate}/s` : 'simulator';
+    $('foot'+id).innerHTML = `
+      <h2><span class="dot" id="pdot${id}"></span> ${FOOT_NAME[id]} shoe <span class="tag" id="plink${id}">simulator</span></h2>
+      <div class="footrow"><span class="badge big" id="pstate${id}">STILL</span>
+        <span class="help" id="pinfo${id}"></span></div>
+      <h3 style="margin-top:12px">Simulator (used when this shoe isn't connected)</h3>
+      <div class="btns sim" id="psim${id}">
+        <button data-sim="0" data-foot="${id}">Still</button><button data-sim="1" data-foot="${id}">Walk</button>
+        <button data-sim="2" data-foot="${id}">Run</button><button data-sim="spin" data-foot="${id}">Spin 360</button>
+      </div>`;
   }
-  for (const s of STEMS){
-    const owner = swapped ? (s.owner === 'L' ? 'R' : 'L') : s.owner;
-    const lvl = document.getElementById('lvl_'+s.id);
-    lvl.style.height = levels[s.id]*100+'%';
-    lvl.style.setProperty('--c', owner === 'L' ? 'var(--L)' : 'var(--R)');
-    const who = document.getElementById('who_'+s.id);
-    who.textContent = owner === 'L' ? 'LEFT PLAYER' : 'RIGHT PLAYER';
-    who.style.color = owner === 'L' ? 'var(--L)' : 'var(--R)';
-    if (s.id === 'vocals') document.getElementById('stem_vocals').style.opacity = vocalCut ? .4 : 1;
+  document.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => simSet(b.dataset.foot, b.dataset.sim));
+
+  const rt = $('requireTurns'); rt.checked = requireTurns;
+  rt.onchange = () => { requireTurns = rt.checked; save('requireTurns', requireTurns); logApp(requireTurns ? 'feet must take turns' : 'feet no longer need to take turns'); };
+  for (const k of ['walk','run']){
+    const el = $(k+'Vol'), n = $(k+'VolN'); el.value = vol[k]; n.textContent = vol[k] + '%';
+    el.oninput = () => { vol[k] = +el.value; n.textContent = vol[k] + '%'; save(k+'Vol', vol[k]); };
   }
-  setBar('fxfilter', fxv.filter); setBar('fxrate', fxv.rate, true); setBar('fxecho', fxv.echo);
+  drawSlots();
 }
 
-function tick(){ const now = performance.now(); computeFeet(now); applyAudio(); draw(); requestAnimationFrame(tick); }
-setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; feet[id].pkts = 0; } updateStatus(); }, 1000);
+function simSet(id, what){
+  const f = feet[id];
+  if (what === 'spin'){ f.sim.spinUntil = performance.now() + 700; f.sim.spins++; logEvent(id, `${FOOT_NAME[id]} simulator: SPIN`); onSpin(id); return; }
+  f.sim.state = +what;
+  logEvent(id, `${FOOT_NAME[id]} simulator: ${STATES[f.sim.state]}`);
+}
 
+function drawSlots(){
+  slots.forEach((s, i) => {
+    $('slot'+i).classList.toggle('on', i === active);
+    $('slotName'+i).textContent = s.name;
+    $('slotFile'+i).textContent = s.file ? s.file : (s.buffer ? 'built-in' : 'built-in (made on Start)');
+  });
+  $('nowName').textContent = slots[active].name;
+  $('nowSlot').textContent = `sound ${active + 1} of 4`;
+  $('nowSwatch').style.background = slots[active].color;
+}
+
+function drawPlay(){
+  const now = performance.now(), st = overallState(now), spinning = anySpinning(now);
+  const shown = spinning ? SPIN : st;
+  const b = $('nowState'); b.textContent = STATES[shown]; b.className = 'badge big s' + shown;
+  const g = started ? master.gain.value : 0;
+  $('nowVolBar').style.width = clamp(g, 0, 1)*100 + '%';
+  const turning = feetTakingTurns(now);
+  if (turning !== wasTurning && usingTurns(now)) logEvent(null, turning ? 'feet are taking turns: walking' : 'feet stopped taking turns');
+  wasTurning = turning;
+  $('nowTurns').textContent = usingTurns(now)
+    ? `left/right turns in the last 3 s: ${recentTurns(now)} (need ${TURNS_NEEDED})`
+    : (isLive(feet.L, now) || isLive(feet.R, now)) ? 'one shoe connected: its own steps count' : '';
+  $('nowVolTxt').textContent = !started ? 'Press Start sound' : paused ? 'paused (no movement)' :
+    `${Math.round(g*100)}%` + (st === RUN ? ' (running)' : st === WALK ? ' (walking)' : ' (fading out)');
+  for (const id of ['L','R']){
+    const f = feet[id], live = isLive(f, now), s = footState(f, now);
+    $('pdot'+id).classList.toggle('live', live);
+    $('plink'+id).textContent = live ? `${f.src}, ${f.rate}/s` : 'simulator';
+    const pb = $('pstate'+id); pb.textContent = STATES[s] || '?'; pb.className = 'badge big s' + s;
+    $('pinfo'+id).textContent = live ? `steps ${f.d.steps}, spins ${f.d.spins}` : '';
+    $('psim'+id).style.opacity = live ? .4 : 1;
+    $('psim'+id).querySelectorAll('[data-sim]').forEach(btn => btn.classList.toggle('on', !live && btn.dataset.sim === String(f.sim.state)));
+  }
+}
+
+// ===================== monitor =====================
+const M = {};   // monitor elements, kept so they keep working when popped out
+const PLOT_SERIES = [
+  {k:'fsr',  name:'pressure',     color:'#3fd0c0', scale:v => v/4095},
+  {k:'down', name:'foot down',    color:'#4cc38a', scale:v => v*0.15 - 1},
+  {k:'yaw',  name:'turning',      color:'#a58bff', scale:v => v/720},
+  {k:'gyro', name:'rotation',     color:'#f5a54a', scale:v => v/1000},
+  {k:'g',    name:'accel (g)',    color:'#e9ebf1', scale:v => v/4},
+];
+const plotOn = load('plotOn', {fsr:true, down:true, yaw:true, gyro:false, g:true});
+
+function buildMonitor(){
+  for (const id of ['L','R']){
+    const el = $('mon'+id); el.className = 'panel monfoot';
+    el.innerHTML = `
+      <h2><span class="dot" data-k="dot"></span> ${FOOT_NAME[id]} shoe <span class="badge" data-k="state" style="margin-left:auto">-</span></h2>
+      <div class="comps">
+        <div class="comp" data-k="cLink"><h3>Link</h3><div class="kv">
+          <span>From</span><b data-k="src">-</b><span>Packets / s</span><b data-k="rate">0</b>
+          <span>Last data</span><b data-k="age">never</b><span>XIAO answering</span><b><span class="lamp" data-k="xiao"></span> <span data-k="xiaoTxt"></span></b></div></div>
+        <div class="comp" data-k="cFsr"><h3>Pressure sensor (A0)</h3>
+          <div class="row"><span>Pressure</span><div class="bar"><i data-k="fsrBar" style="--c:var(--${id})"></i></div><span class="num" data-k="fsr">0</span></div>
+          <div class="kv"><span>Foot down</span><b><span class="lamp" data-k="down"></span></b></div></div>
+        <div class="comp wide" data-k="cImu"><h3>Gyro board (MPU-6050) <span class="lamp" data-k="imuOk"></span> <span data-k="imuTxt" style="text-transform:none;letter-spacing:0"></span></h3>
+          <div class="comps" style="gap:0 16px">
+            <div>
+              <div class="row"><span>accel x</span><div class="bar signed"><i data-k="axBar"></i></div><span class="num" data-k="ax">0</span></div>
+              <div class="row"><span>accel y</span><div class="bar signed"><i data-k="ayBar"></i></div><span class="num" data-k="ay">0</span></div>
+              <div class="row"><span>accel z</span><div class="bar signed"><i data-k="azBar"></i></div><span class="num" data-k="az">0</span></div>
+            </div><div>
+              <div class="row"><span>total g</span><div class="bar"><i data-k="gBar"></i></div><span class="num" data-k="g">0</span></div>
+              <div class="row"><span>rotation</span><div class="bar"><i data-k="gyroBar" style="--c:#f5a54a"></i></div><span class="num" data-k="gyro">0</span></div>
+              <div class="row"><span>turning</span><div class="bar signed"><i data-k="yawBar" style="--c:var(--spin)"></i></div><span class="num" data-k="yaw">0</span></div>
+            </div></div></div>
+        <div class="comp" data-k="cSteps"><h3>Step detector</h3><div class="kv">
+          <span>Steps</span><b data-k="steps">0</b><span>Time between steps</span><b data-k="stepMs">-</b>
+          <span>Pace (run: over 75)</span><b data-k="pace">-</b></div></div>
+        <div class="comp" data-k="cSpin"><h3>Spin detector</h3>
+          <div class="row"><span>Progress</span><div class="bar"><i data-k="spinBar" style="--c:var(--spin)"></i></div><span class="num" data-k="spinPct">0%</span></div>
+          <div class="kv"><span>Spins</span><b data-k="spins">0</b></div></div>
+        <div class="comp wide"><h3>Last 10 seconds</h3><canvas class="plot" data-k="plot"></canvas>
+          <div class="legend" data-k="legend"></div></div>
+      </div>`;
+    const refs = {el};
+    el.querySelectorAll('[data-k]').forEach(n => refs[n.dataset.k] = n);
+    refs.legend.innerHTML = PLOT_SERIES.map(s => `<label><input type="checkbox" data-series="${s.k}" ${plotOn[s.k] ? 'checked' : ''}><i style="background:${s.color}"></i>${s.name}</label>`).join('');
+    refs.legend.querySelectorAll('input').forEach(cb => cb.onchange = () => { plotOn[cb.dataset.series] = cb.checked; save('plotOn', plotOn); syncLegends(cb.dataset.series, cb.checked); });
+    M[id] = refs;
+  }
+  for (const k of ['monitor','monitorHome','poppedNote','log','logShow','logRate','logPause','logScroll','sendFoot','sendText']) M[k] = $(k);
+  M.monitor.querySelector('#logClear').onclick = () => { logLines.length = 0; logDirty = true; };
+  $('logSave').onclick = saveLog;
+  M.logShow.onchange = () => logDirty = true;
+  $('sendBtn').onclick = () => { sendCmd(M.sendText.value); M.sendText.value = ''; };
+  M.sendText.addEventListener('keydown', e => { if (e.key === 'Enter'){ sendCmd(M.sendText.value); M.sendText.value = ''; } });
+  M.monitor.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => sendCmd(b.dataset.cmd));
+  M.popBtn = $('popBtn');
+  M.popBtn.onclick = popOut;
+  $('bringBack').onclick = bringBack;
+}
+function syncLegends(k, on){ for (const id of ['L','R']) M[id].legend.querySelector(`[data-series="${k}"]`).checked = on; }
+
+function setBar(el, v, signed){
+  if (signed){ const w = clamp(Math.abs(v), 0, 1)*50; el.style.width = w + '%'; el.style.left = (v < 0 ? 50 - w : 50) + '%'; }
+  else el.style.width = clamp(v, 0, 1)*100 + '%';
+}
+
+function drawMonitor(){
+  if (!monitorVisible()) return;
+  const now = performance.now();
+  for (const id of ['L','R']){
+    const f = feet[id], r = M[id], d = f.d, live = isLive(f, now), s = footState(f, now), any = f.lastLive > 0;
+    r.dot.classList.toggle('live', live);
+    r.state.textContent = (live ? '' : 'sim ') + (STATES[s] || '?'); r.state.className = 'badge s' + s;
+    r.src.textContent = live ? f.src : (any ? `${f.src} (stopped)` : 'nothing yet');
+    r.rate.textContent = f.rate;
+    r.age.textContent = any ? (now - f.lastLive < 1000 ? `${Math.round(now - f.lastLive)} ms ago` : `${((now - f.lastLive)/1000).toFixed(1)} s ago`) : 'never';
+    const xiaoKnown = f.src === 'USB', xiaoOk = (d.flags & 4) !== 0;
+    r.xiao.className = 'lamp' + (!any ? '' : (f.src === 'Bluetooth' || xiaoOk) ? ' on' : ' bad');
+    r.xiaoTxt.textContent = !any ? '' : f.src === 'Bluetooth' ? 'yes' : xiaoKnown ? (xiaoOk ? 'yes' : 'no: check D4/D5') : '';
+    for (const c of ['cLink','cFsr','cImu','cSteps','cSpin']) r[c].classList.toggle('off', !live);
+
+    setBar(r.fsrBar, d.fsr/4095); r.fsr.textContent = d.fsr;
+    r.down.className = 'lamp' + ((d.flags & 2) ? ' on' : '');
+    const imuOk = (d.flags & 1) !== 0;
+    r.imuOk.className = 'lamp' + (!any ? '' : imuOk ? ' on' : ' bad');
+    r.imuTxt.textContent = !any ? '' : imuOk ? 'found' : 'NOT FOUND: check SDA/SCL/VCC';
+    for (const a of ['ax','ay','az']){ setBar(r[a+'Bar'], d[a]/200, true); r[a].textContent = (d[a]/100).toFixed(2); }
+    const g = Math.hypot(d.ax, d.ay, d.az)/100;
+    setBar(r.gBar, g/4); r.g.textContent = g.toFixed(2);
+    setBar(r.gyroBar, d.gyro/1000); r.gyro.textContent = d.gyro + '°/s';
+    setBar(r.yawBar, d.yaw/720, true); r.yaw.textContent = d.yaw + '°/s';
+    r.steps.textContent = d.steps;
+    r.stepMs.textContent = d.stepMs ? d.stepMs + ' ms' : '-';
+    r.pace.textContent = d.stepMs ? `${Math.round(60000/d.stepMs)} / min` : '-';
+    setBar(r.spinBar, d.spinPct/100); r.spinPct.textContent = d.spinPct + '%';
+    r.spins.textContent = d.spins;
+    drawPlot(r.plot, f.hist, now);
+  }
+  renderLog();
+}
+
+function drawPlot(cv, hist, now){
+  const w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  const dpr = cv.ownerDocument.defaultView.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  c.strokeStyle = '#2a2f3a'; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, h/2); c.lineTo(w, h/2); c.stroke();
+  for (let s = 1; s < 10; s++){ const x = w - s*w/10; c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.strokeStyle = '#161a22'; c.stroke(); }
+  for (const ser of PLOT_SERIES){
+    if (!plotOn[ser.k] || hist.length < 2) continue;
+    c.strokeStyle = ser.color; c.lineWidth = 1.5; c.beginPath();
+    hist.forEach((p, i) => {
+      const x = w - (now - p.t)/PLOT_MS*w, y = h/2 - clamp(ser.scale(p[ser.k]), -1, 1)*(h/2 - 3);
+      (i && p.t - hist[i-1].t < 300) ? c.lineTo(x, y) : c.moveTo(x, y);
+    });
+    c.stroke();
+  }
+}
+
+// ---------- serial monitor log ----------
+const logLines = []; let logDirty = false; const lastDataLogged = {L:0, R:0};
+const t0 = performance.now();
+function pushLog(kind, foot, text){
+  logLines.push({t:performance.now(), kind, foot, text});
+  if (logLines.length > LOG_MAX) logLines.splice(0, logLines.length - LOG_MAX);
+  logDirty = true;
+}
+function logData(foot, src, text){
+  const rate = M.logRate ? M.logRate.value : 'all', now = performance.now();
+  if (rate === 'none') return;
+  if (rate === '5' && now - lastDataLogged[foot] < 200) return;
+  lastDataLogged[foot] = now;
+  pushLog('data', foot, (src === 'USB' ? 'USB ' : 'BT  ') + text);
+}
+const logEvent = (foot, text) => pushLog('event', foot, '>>> ' + text);
+const logApp = text => pushLog('app', null, 'app ' + text);
+const logDbg = (foot, text) => pushLog('dbg', foot, 'USB ' + text);
+const logSent = (foot, text) => pushLog('sent', foot, 'you > ' + text);
+
+function lineVisible(l, show){
+  if (show === 'all') return true;
+  if (show === 'events') return l.kind === 'event' || l.kind === 'app' || l.kind === 'sent' || (l.kind === 'dbg' && l.text.startsWith('USB #'));
+  return l.foot === show || l.foot === null;
+}
+function fmtLine(l){ return `${((l.t - t0)/1000).toFixed(2).padStart(8)}  ${l.foot || ' '}  ${l.text}`; }
+function renderLog(){
+  if (!logDirty || M.logPause.checked) return;
+  logDirty = false;
+  const show = M.logShow.value, out = [];
+  for (let i = logLines.length - 1; i >= 0 && out.length < 500; i--) if (lineVisible(logLines[i], show)) out.push(fmtLine(logLines[i]));
+  M.log.textContent = out.reverse().join('\n');
+  if (M.logScroll.checked) M.log.scrollTop = M.log.scrollHeight;
+}
+function saveLog(){
+  const blob = new Blob([logLines.map(fmtLine).join('\n')], {type:'text/plain'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `shoe-log-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+// ---------- tabs and pop-out window ----------
+let tab = 'play', popWin = null;
+function monitorVisible(){ return !!popWin || tab === 'monitor'; }
+function showTab(t){
+  tab = t;
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+  $('playView').classList.toggle('hidden', t !== 'play');
+  M.monitorHome.classList.toggle('hidden', t !== 'monitor');
+  logDirty = true;
+}
+function popOut(){
+  if (popWin){ popWin.focus(); return; }
+  const w = window.open('', 'shoe-monitor', 'width=1100,height=900');
+  if (!w){ setStatus('The browser blocked the new window. Allow pop-ups for this page.'); return; }
+  w.document.open();
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Shoe monitor</title><link rel="icon" href="data:,">${[...document.querySelectorAll('style')].map(s => s.outerHTML).join('')}</head><body></body></html>`);
+  w.document.close();
+  w.document.body.appendChild(M.monitor);
+  M.popBtn.textContent = 'Put back in the main page';
+  M.popBtn.onclick = bringBack;
+  M.poppedNote.classList.remove('hidden');
+  popWin = w; logDirty = true;
+  w.addEventListener('pagehide', () => { if (popWin === w) bringBack(); });
+}
+function bringBack(){
+  if (!popWin) return;
+  const w = popWin; popWin = null;
+  M.monitorHome.appendChild(M.monitor);
+  M.poppedNote.classList.add('hidden');
+  M.popBtn.textContent = 'Open in its own window';
+  M.popBtn.onclick = popOut;
+  try{ w.close(); }catch(e){}
+  logDirty = true;
+}
+addEventListener('pagehide', () => { if (popWin) popWin.close(); });
+
+// ===================== status =====================
 let statusMsgUntil = 0;
-function setStatus(t){ document.getElementById('status').textContent = t; statusMsgUntil = performance.now() + 3000; }
+function setStatus(t){ $('status').textContent = t; statusMsgUntil = performance.now() + 3500; }
 function updateStatus(){
   if (performance.now() < statusMsgUntil) return;
-  const live = ['L','R'].filter(id => feet[id].live).map(id => id === 'L' ? 'Left' : 'Right');
-  document.getElementById('status').textContent = (live.length ? live.join(' + ') + ' live. ' : 'No shoes live, simulator is driving. ') + (playing ? 'Music playing.' : 'Press Start music.');
+  const live = ['L','R'].filter(id => isLive(feet[id])).map(id => FOOT_NAME[id]);
+  $('status').textContent = (live.length ? live.join(' + ') + ' shoe live. ' : 'No shoes live, simulator is driving. ') +
+    (!started ? 'Press Start sound.' : paused ? 'Sound paused.' : 'Sound playing.');
 }
+setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; feet[id].pkts = 0; } updateStatus(); }, 1000);
 
-// keyboard stomps for testing
-const keyFoot = {a:'L', l:'R'};
-addEventListener('keydown', e => {
-  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
-  if (e.code === 'Space'){ e.preventDefault(); feet.L.keyStomp = feet.R.keyStomp = true; setTimeout(()=>{feet.L.keyStomp = feet.R.keyStomp = false;}, 150); }
-  const id = keyFoot[e.key.toLowerCase()]; if (id) feet[id].keyStomp = true;
-});
-addEventListener('keyup', e => { const id = keyFoot[e.key.toLowerCase()]; if (id) feet[id].keyStomp = false; });
-
-// ===================== Bluetooth (two shoes) =====================
+// ===================== Bluetooth (one per shoe) =====================
 async function connectBLE(id){
   if (!navigator.bluetooth){ setStatus('Bluetooth needs Chrome or Edge, opened from localhost or https.'); return; }
   try{
     setStatus(`Pick "MusicShoe-${id}" in the popup...`);
-    const dev = await navigator.bluetooth.requestDevice({
-      filters:[{namePrefix:'MusicShoe-'+id}, {namePrefix:'Adafruit Bluefruit'}],
-      optionalServices:[SERVICE_UUID, NUS_SERVICE] });
-    let ch = null, lineBuf = '';
-    const onText = e => {                       // Bluefruit shield: text lines over Nordic UART
-      lineBuf += new TextDecoder().decode(e.target.value);
-      let i;
-      while ((i = lineBuf.indexOf('\n')) >= 0){
-        const p = lineBuf.slice(0,i).trim().split(','); lineBuf = lineBuf.slice(i+1);
-        if (p.length >= 5 && (p[0] === 'L' || p[0] === 'R')) feed(id, +p[1], +p[2], +p[3], +p[4], 'bluetooth');
-      }
-      if (lineBuf.length > 200) lineBuf = '';
-    };
-    const onBinary = e => {                     // XIAO: 8 packed bytes
-      const d = e.target.value;
-      if (d.byteLength >= 8) feed(id, d.getUint16(0,true), d.getInt16(2,true)/100, d.getInt16(4,true)/100, d.getUint16(6,true), 'bluetooth');
+    const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}], optionalServices:[SERVICE_UUID]});
+    let ch = null;
+    const onData = e => {
+      const v = e.target.value;
+      if (v.byteLength >= 20) ingest(id, decodePacket(v), 'Bluetooth');
+      else logDbg(id, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running the new xiao_radio?`);
     };
     const run = async () => {
-      if (ch){ ch.removeEventListener('characteristicvaluechanged', onText); ch.removeEventListener('characteristicvaluechanged', onBinary); }
+      if (ch) ch.removeEventListener('characteristicvaluechanged', onData);
       const server = await dev.gatt.connect();
-      try {
-        const svc = await server.getPrimaryService(NUS_SERVICE);
-        ch = await svc.getCharacteristic(NUS_TX);
-        ch.addEventListener('characteristicvaluechanged', onText);
-      } catch (err) {
-        const svc = await server.getPrimaryService(SERVICE_UUID);
-        ch = await svc.getCharacteristic(DATA_UUID);
-        ch.addEventListener('characteristicvaluechanged', onBinary);
-      }
+      const svc = await server.getPrimaryService(SERVICE_UUID);
+      ch = await svc.getCharacteristic(DATA_UUID);
+      ch.addEventListener('characteristicvaluechanged', onData);
       await ch.startNotifications();
-      setStatus(`${id === 'L' ? 'Left' : 'Right'} shoe connected.`);
+      setStatus(`${FOOT_NAME[id]} shoe connected.`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe connected by Bluetooth (${dev.name})`);
     };
     dev.addEventListener('gattserverdisconnected', () => {
-      setStatus(`${id === 'L' ? 'Left' : 'Right'} shoe dropped, reconnecting...`);
-      setTimeout(() => run().catch(() => setStatus(`${id === 'L' ? 'Left' : 'Right'} shoe lost. Click Connect again.`)), 800);
+      setStatus(`${FOOT_NAME[id]} shoe dropped, reconnecting...`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe Bluetooth dropped, reconnecting`);
+      setTimeout(() => run().catch(() => { setStatus(`${FOOT_NAME[id]} shoe lost. Click Connect again.`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe lost`); }), 800);
     });
     await run();
   }catch(e){ setStatus(e.name === 'NotFoundError' ? 'No shoe picked.' : 'Bluetooth error: ' + e.message); }
 }
 
-// ===================== USB test (Minima plugged in) =====================
+// ===================== USB (Minima plugged in) =====================
+const usbPorts = [];
 async function connectUSB(){
-  if (!('serial' in navigator)){ setStatus('USB test needs Chrome or Edge on a laptop.'); return; }
+  if (!('serial' in navigator)){ setStatus('USB needs Chrome or Edge on a laptop.'); return; }
   let port;
   try{ port = await navigator.serial.requestPort(); await port.open({baudRate:115200}); }
-  catch(e){ setStatus('No USB device picked.'); return; }
-  setStatus('USB connected. Reading the Minima...');
-  const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(()=>{});
+  catch(e){ setStatus(e.name === 'NotFoundError' ? 'No USB device picked.' : 'USB error: ' + e.message + ' (is the Arduino Serial Monitor open?)'); return; }
+  const u = {port, foot:null, writer:null};
+  usbPorts.push(u);
+  const enc = new TextEncoderStream(); enc.readable.pipeTo(port.writable).catch(() => {});
+  u.writer = enc.writable.getWriter();
+  setStatus('USB connected. Reading the Minima...'); logApp('USB device connected');
+  const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(() => {});
   const reader = dec.readable.getReader(); let buf = '';
   try{
     while (true){
       const {value, done} = await reader.read(); if (done) break;
       buf += value; let i;
       while ((i = buf.indexOf('\n')) >= 0){
-        const p = buf.slice(0,i).trim().split(','); buf = buf.slice(i+1);
-        if ((p[0] === 'L' || p[0] === 'R') && p.length >= 5) feed(p[0], +p[1], +p[2], +p[3], +p[4], 'usb');
+        const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+        if (!line) continue;
+        const p = line.split(',');
+        if ((p[0] === 'L' || p[0] === 'R') && p.length >= 13 && p.slice(1).every(x => x !== '' && !isNaN(x))){
+          u.foot = p[0];
+          ingest(p[0], parseCsv(p), 'USB', line);
+        } else logDbg(u.foot, line);
       }
+      if (buf.length > 1000) buf = '';
     }
-  }catch(e){ setStatus('USB disconnected.'); }
+  }catch(e){}
+  usbPorts.splice(usbPorts.indexOf(u), 1);
+  setStatus('USB disconnected.'); logApp('USB device disconnected');
 }
 
-document.getElementById('startBtn').onclick = start;
-document.getElementById('bleL').onclick = () => connectBLE('L');
-document.getElementById('bleR').onclick = () => connectBLE('R');
-document.getElementById('usbBtn').onclick = connectUSB;
-buildUI();
-requestAnimationFrame(tick);
+async function sendCmd(text){
+  text = (text || '').trim(); if (!text) return;
+  const want = M.sendFoot.value;
+  const targets = usbPorts.filter(u => want === 'any' || u.foot === want || u.foot === null);
+  logSent(want === 'any' ? null : want, text);
+  if (!targets.length){ logApp('no shoe is plugged in by USB, so nothing was sent. Click USB first.'); return; }
+  for (const u of targets){ try{ await u.writer.write(text + '\n'); }catch(e){ logApp('could not send: ' + e.message); } }
+}
+
+// ===================== keyboard (testing without shoes) =====================
+addEventListener('keydown', e => {
+  if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'w' || k === 'r' || k === 'x'){ const s = {x:STILL, w:WALK, r:RUN}[k]; for (const id of ['L','R']) simSet(id, s); }
+  else if (k === 's') simSet('L', 'spin');
+  else if (k >= '1' && k <= '4') selectSound(+k - 1, 'keyboard');
+});
+
+// ===================== go =====================
+$('startBtn').onclick = start;
+$('bleL').onclick = () => connectBLE('L');
+$('bleR').onclick = () => connectBLE('R');
+$('usbBtn').onclick = connectUSB;
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+buildPlay();
+buildMonitor();
+setInterval(applyVolume, 50);
+setInterval(drawMonitor, 100);
+(function frame(){ drawPlay(); requestAnimationFrame(frame); })();
+window.shoeApp = {feet, ingest, decodePacket, overallState, slots, get active(){ return active; }, get paused(){ return paused; }, get started(){ return started; }};
 </script>
 </body>
 </html>
