@@ -2,6 +2,31 @@
 
 Two people. One shoe each. Together you remix a song with your feet.
 
+## Wizard of Oz soundboard (no sensors needed)
+
+`wizard/index.html` lets a person nearby play the shoes' sounds by hand while watching the wearer. Nothing to upload to the boards.
+
+1. Open `wizard/index.html` in Chrome (double-click it), or run `python3 -m http.server` in this folder and go to `http://localhost:8000/wizard/`.
+2. Click **Start sound**, then **Start session** and clap on camera (it beeps and flashes at time zero).
+3. Watch the wearer and press keys:
+
+| Key | What the wearer does | Sound |
+|---|---|---|
+| `F` / `J` | every left / right step | the background world loop gets louder and faster the faster you tap. It drops back to a quiet idle level 2 s after the last tap |
+| `1`-`0` | toe touches a Red, Yellow, Blue, Green, Purple, Pink, Black, White, Brown or other object | that color's world sound joins the 4-slot library (the 5th replaces the oldest) and starts playing |
+| `Space` | 360 spin | DJ scratch, then the next sound in the library |
+| `T` | both feet to the sky | thunder and lightning |
+| `G` | big step / lunge | giant stomp |
+| `K` | karate kick | crashing wave |
+| `B` | dancer's pose | ballerina music box |
+| `Esc` | | STOP ALL |
+
+Only one move sound plays at a time. A new one cuts the last, and pressing the same key again stops it. The world loop keeps going underneath, ducked while a move plays. Every trigger is logged with its time since **Start session**. Add notes, then **Export CSV**.
+
+The **Setup** tab renames, adds or removes inputs, changes keys, and swaps any sound for your own audio file. Changes save in the browser. **Export setup** writes one .json file (with your sound files inside) to move to another laptop.
+
+![Wizard soundboard](docs/wizard.png)
+
 ## Pictures
 
 **The music app** with the left shoe live over Bluetooth (40 updates a second). The right player is on the simulator.
