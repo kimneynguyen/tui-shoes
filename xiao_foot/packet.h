@@ -2,12 +2,11 @@
 #include <stdint.h>
 
 // What one shoe sends, 25 times a second. 20 bytes, little endian.
-// The same bytes go Minima -> XIAO (SDA/SCL) -> laptop (Bluetooth).
-// Must match minima_foot/packet.h and sampler/index.html.
+// The XIAO sends these bytes to the laptop over Bluetooth. Must match sampler/index.html.
 struct __attribute__((packed)) FootPacket {
   uint8_t  state;     // 0 still, 1 walk, 2 run, 3 spin
   uint8_t  spins;     // goes up by 1 after every full spin (wraps 255 -> 0)
-  uint8_t  flags;     // bit 0 gyro found, bit 1 foot down, bit 2 XIAO answering
+  uint8_t  flags;     // bit 0 gyro found, bit 1 foot down, bit 2 XIAO answering (always set now: the XIAO does everything)
   uint8_t  spinPct;   // how far into a spin right now, 0..100
   uint16_t fsr;       // pressure, 0..4095
   uint16_t steps;     // goes up by 1 every step of this foot

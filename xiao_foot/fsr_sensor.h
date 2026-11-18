@@ -1,6 +1,6 @@
 #pragma once
 // Pressure sensor (FSR) in the sole.
-// Wiring: one leg -> 5V, other leg -> A0, resistor from A0 -> GND.
+// Wiring: one leg -> + rail (3.3 V), other leg -> XIAO D0, 10k resistor from D0 -> - rail.
 #include <Arduino.h>
 #include "config.h"
 

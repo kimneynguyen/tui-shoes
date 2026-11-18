@@ -762,12 +762,14 @@ async function connectBLE(id){
   if (!navigator.bluetooth){ setStatus('Bluetooth needs Chrome or Edge, opened from localhost or https.'); return; }
   try{
     setStatus(`Pick "MusicShoe-${id}" in the popup...`);
-    const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}], optionalServices:[SERVICE_UUID]});
+    // Either filter is enough: the name, or the shoe's service (macOS can show a stale cached name)
+    const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}, {services:[SERVICE_UUID]}], optionalServices:[SERVICE_UUID]});
+    if (dev.name && !dev.name.startsWith('MusicShoe-' + id)) logApp(`picked "${dev.name}" for the ${FOOT_NAME[id].toLowerCase()} shoe. If it's the other shoe, set FOOT in its config.h`);
     let ch = null;
     const onData = e => {
       const v = e.target.value;
       if (v.byteLength >= 20) ingest(id, decodePacket(v), 'Bluetooth');
-      else logDbg(id, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running the new xiao_radio?`);
+      else logDbg(id, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running xiao_foot?`);
     };
     const run = async () => {
       if (ch) ch.removeEventListener('characteristicvaluechanged', onData);

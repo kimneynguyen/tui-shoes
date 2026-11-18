@@ -1,5 +1,5 @@
-// Runs minima_foot/motion.h on the laptop with made-up sensor data.
-// Build and run:  g++ -std=c++17 -I../../minima_foot logic_test.cpp -o logic_test && ./logic_test
+// Runs xiao_foot/motion.h on the laptop with made-up sensor data.
+// Build and run:  g++ -std=c++17 -I../../xiao_foot logic_test.cpp -o logic_test && ./logic_test
 #include <cstdio>
 #include "motion.h"
 
@@ -11,7 +11,7 @@ struct Shoe {
   uint32_t t = 0;
   bool fsrSteps = true;
 
-  // one 10 ms sample, same order as minima_foot.ino readSensors()
+  // one 10 ms sample, same order as xiao_foot.ino readSensors()
   void sample(uint16_t fsr, float ax, float ay, float az, float gx, float gy, float gz) {
     t += 10;
     steps.beginSample();
