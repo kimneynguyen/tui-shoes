@@ -90,10 +90,46 @@ void startBluetooth() {
                BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
   dataChar->addDescriptor(new BLE2902());
   svc->start();
+
+  // Flags + a 128-bit UUID + the name don't fit in one 31-byte packet. The app
+  // finds the shoe by name, so the name goes in the main packet, where every
+  // scanner sees it, and the UUID goes in the scan response.
+  BLEAdvertisementData advData, scanData;
+  advData.setFlags(0x06);                         // general discoverable, BLE only
+  advData.setName(bleName());
+  scanData.setCompleteServices(BLEUUID(SERVICE_UUID));
   BLEAdvertising *adv = BLEDevice::getAdvertising();
-  adv->addServiceUUID(SERVICE_UUID);
+  adv->setAdvertisementData(advData);
+  adv->setScanResponseData(scanData);
   adv->setScanResponse(true);
   BLEDevice::startAdvertising();
+}
+
+bool advertising() { return BLEDevice::getAdvertising()->isAdvertising(); }
+
+// If advertising ever stops while nobody is connected, start it again.
+void keepAdvertising(uint32_t now) {
+  static uint32_t lastCheck = 0;
+  if (now - lastCheck < 2000) return;
+  lastCheck = now;
+  if (!connected && !advertising()) {
+    BLEDevice::startAdvertising();
+    Serial.println(F("# bluetooth: advertising had stopped, restarted it"));
+  }
+}
+
+const char *resetReason() {
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "power on";
+    case ESP_RST_SW:       return "restart";
+    case ESP_RST_PANIC:    return "CRASH (code error)";
+    case ESP_RST_INT_WDT:
+    case ESP_RST_TASK_WDT:
+    case ESP_RST_WDT:      return "WATCHDOG (code froze)";
+    case ESP_RST_BROWNOUT: return "BROWNOUT (power dipped: power bank or wiring)";
+    case ESP_RST_USB:      return "USB";
+    default:               return "other";
+  }
 }
 
 void sendBluetooth() {
@@ -114,7 +150,9 @@ void printHelp() {
   Serial.print(F("# parts: FSR ")); Serial.print(USE_FSR ? F("on (D0)") : F("OFF"));
   Serial.print(F(", gyro ")); Serial.print(USE_IMU ? (imu.ok ? F("on") : F("NOT FOUND (check D4 SDA / D5 SCL / VCC / GND)")) : F("OFF"));
   Serial.print(F(", steps from ")); Serial.println(stepsFromFsr ? F("pressure sensor") : F("gyro board"));
-  Serial.print(F("# Bluetooth name ")); Serial.println(bleName());
+  Serial.print(F("# Bluetooth name ")); Serial.print(bleName());
+  Serial.print(F(", address ")); Serial.print(BLEDevice::getAddress().toString().c_str());
+  Serial.print(F(", last reset: ")); Serial.println(resetReason());
 }
 
 void calibrateGyro() {
@@ -261,7 +299,8 @@ void printDebug(uint32_t now) {
       if (now - lastSlow < 1000) break;
       lastSlow = now;
       Serial.print(F("# bluetooth ")); Serial.print(bleName());
-      Serial.print(connected ? F(": connected") : F(": waiting for the laptop"));
+      Serial.print(connected ? F(": connected") : advertising() ? F(": advertising, waiting for the laptop") : F(": NOT advertising"));
+      Serial.print(F("  address ")); Serial.print(BLEDevice::getAddress().toString().c_str());
       Serial.print(F("  sent:")); Serial.print(notifications);
       Serial.print(F("  state=")); Serial.println(stateName(pkt.state));
       break;
@@ -312,6 +351,7 @@ void loop() {
   handleSerial();
 
   uint32_t now = millis();
+  keepAdvertising(now);
   if (now - lastSample < 1000 / SAMPLE_HZ) return;
   float dt = (now - lastSample) / 1000.0f;
   lastSample = now;

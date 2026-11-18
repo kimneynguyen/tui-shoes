@@ -178,7 +178,7 @@ Walking and running volume are sliders in the app. The app's max is 100%, so tur
 
 - **`gyro NOT FOUND`** (key `2`, or the Monitor's gyro lamp is red): SDA and SCL are swapped, or VCC isn't plugged in. Run `xiao_sensor_test`, which says if they're swapped.
 - **Pressure stays at 0**: the FSR's wires or its D0 wire aren't in the same breadboard row. **Pressure stuck near 4095**: the 10k resistor to the − rail is missing.
-- **Shoe isn't in the Bluetooth list**: is the power bank on? Is `FOOT` right? Does key `6` say "waiting for the laptop"?
+- **Shoe isn't in the Bluetooth list**: connect from the app's Connect button, not macOS Bluetooth settings. Open the app at `http://localhost:8000` in Chrome, and allow Chrome under System Settings > Privacy & Security > Bluetooth. Key `6` should say "advertising, waiting for the laptop". If it says "NOT advertising", or the boot line says BROWNOUT, it's a power problem: try a USB cable straight from the laptop. Still missing? Install nRF Connect (free) on a phone and scan: if `MusicShoe-L` shows up there, the shoe is fine and the problem is on the laptop side. Quit Chrome fully and try again.
 - **The shoe switches off after ~30 seconds**: the power bank turns itself off at low current. Use its "always on" / low-current mode.
 - **The app can't open USB**: close the Arduino Serial Monitor first. Only one program can use the port.
 - **Code won't upload to the XIAO**: hold BOOT, tap RESET, let go of BOOT, try again.
