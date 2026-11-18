@@ -1,6 +1,7 @@
 #pragma once
 // MPU-6050 gyro + accelerometer (GY-521 board), read with plain Wire calls.
-// Wiring: VCC -> 5V, GND -> GND, SDA -> SDA (A4), SCL -> SCL (A5).
+// Wiring: VCC -> + rail (3.3 V), GND -> - rail, SDA -> XIAO D4, SCL -> XIAO D5.
+// Wire.begin(SDA_PIN, SCL_PIN) is called in xiao_foot.ino.
 #include <Arduino.h>
 #include <Wire.h>
 #include "config.h"

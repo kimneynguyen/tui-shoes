@@ -1,47 +1,56 @@
 /*
-  Sound Effect Shoes : Minima foot sketch (one per shoe)
-  ------------------------------------------------------
-  Board: Arduino UNO R4 Minima
+  Sound Effect Shoes : XIAO foot sketch (one per shoe, no Minima)
+  ----------------------------------------------------------------
+  Board: Seeed XIAO ESP32-C6 (IDE board "XIAO_ESP32C6"), esp32 board package 3.x.
+         Tools > USB CDC On Boot: Enabled.
+  Wiring: docs/xiao-only-rewiring.md. FSR on D0 (10k to GND), gyro on D4 SDA / D5 SCL,
+          everything on 3.3 V from the XIAO's 3V3 pin. Nothing on the 5V pin.
 
-  Figures out what this foot is doing and sends it on:
-     STILL  no movement for 2 seconds  -> laptop pauses the sound
-     WALK   steps at a normal pace     -> default volume
-     RUN    fast steps                 -> max volume
-     SPIN   a full 360 turn            -> laptop switches to the next sound
+  Reads the sensors, works out what this foot is doing, and sends it to the
+  laptop over Bluetooth as "MusicShoe-L" or "MusicShoe-R":
+     STILL  no steps for 2 seconds      -> laptop pauses the sound
+     WALK   steps at a normal pace      -> default volume
+     RUN    fast steps                  -> max volume
+     SPIN   a full 360 turn             -> laptop switches to the next sound
 
   Files (each one is a tab in the Arduino app):
      config.h      settings: FOOT, parts on/off, thresholds   <<< start here
      fsr_sensor.h  the pressure sensor
      imu.h         the MPU-6050 gyro
      motion.h      steps, spins, walk / run / still
-     xiao_link.h   sending to the XIAO
-     packet.h      the 20 bytes sent to the XIAO and the laptop
+     packet.h      the 20 bytes sent to the laptop
 
   DEBUGGING: open the Serial Monitor (115200), type a key and press Enter:
-     0  app mode: the line the music app reads (default)
+     0  app mode: the line the music app reads over USB (default)
      1  pressure sensor only        4  spin detector only
      2  gyro board only             5  walk / run / still decision
-     3  step detector only          6  XIAO link only
+     3  step detector only          6  Bluetooth status
      c  re-measure the gyro offset (keep the shoe still)
      q  quiet         h  this help
   Modes 1-5 also work in Tools > Serial Plotter.
-  To run without a part, set USE_FSR / USE_IMU / USE_XIAO to 0 in config.h.
+  To run without a part, set USE_FSR / USE_IMU to 0 in config.h.
+  To test Bluetooth and the app with no sensors, set DEMO_MODE to 1.
 */
 
 #include <Wire.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLE2902.h>
 #include "config.h"
 #include "packet.h"
 #include "motion.h"
 #include "fsr_sensor.h"
 #include "imu.h"
-#include "xiao_link.h"
+
+// Must match the app (sampler/index.html)
+#define SERVICE_UUID "7b1e0001-5d2c-4c3b-9a41-50a1c5717e00"
+#define DATA_UUID    "7b1e0002-5d2c-4c3b-9a41-50a1c5717e00"
 
 enum Mode : char { MODE_APP = '0', MODE_FSR = '1', MODE_IMU = '2', MODE_STEPS = '3',
-                   MODE_SPIN = '4', MODE_STATE = '5', MODE_XIAO = '6', MODE_QUIET = 'q' };
+                   MODE_SPIN = '4', MODE_STATE = '5', MODE_BLE = '6', MODE_QUIET = 'q' };
 
 FsrSensor fsr;
 Mpu6050 imu;
-XiaoLink xiao;
 StepDetector steps;
 GravityTracker gravity;
 SpinDetector spin;
@@ -55,29 +64,61 @@ uint8_t lastState = 0xFF;
 
 const bool stepsFromFsr = USE_FSR && STEPS_FROM_FSR;
 
-// The R4's Wire library turns on the chip's internal pull-ups, which go to 5 V.
-// The XIAO only takes 3.3 V, so switch them off and let the gyro board's
-// 2.2k pull-ups (to 3.3 V) set the level.
-void i2cPullupsOff() {
-  R_IOPORT_PinCfg(&g_ioport_ctrl, g_pin_cfg[WIRE_SDA_PIN].pin,
-                  (uint32_t)(IOPORT_CFG_DRIVE_MID | IOPORT_CFG_PERIPHERAL_PIN | IOPORT_PERIPHERAL_IIC));
-  R_IOPORT_PinCfg(&g_ioport_ctrl, g_pin_cfg[WIRE_SCL_PIN].pin,
-                  (uint32_t)(IOPORT_CFG_DRIVE_MID | IOPORT_CFG_PERIPHERAL_PIN | IOPORT_PERIPHERAL_IIC));
+// ---------------------------------------------------------------------
+// Bluetooth
+// ---------------------------------------------------------------------
+BLECharacteristic *dataChar = nullptr;
+volatile bool connected = false;
+uint32_t notifications = 0;
+
+class ServerCB : public BLEServerCallbacks {
+  void onConnect(BLEServer *s) override { connected = true; }
+  void onDisconnect(BLEServer *s) override {
+    connected = false;
+    BLEDevice::startAdvertising();   // let the laptop reconnect
+  }
+};
+
+String bleName() { return String("MusicShoe-") + FOOT; }
+
+void startBluetooth() {
+  BLEDevice::init(bleName().c_str());
+  BLEServer *server = BLEDevice::createServer();
+  server->setCallbacks(new ServerCB());
+  BLEService *svc = server->createService(SERVICE_UUID);
+  dataChar = svc->createCharacteristic(DATA_UUID,
+               BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  dataChar->addDescriptor(new BLE2902());
+  svc->start();
+  BLEAdvertising *adv = BLEDevice::getAdvertising();
+  adv->addServiceUUID(SERVICE_UUID);
+  adv->setScanResponse(true);
+  BLEDevice::startAdvertising();
+}
+
+void sendBluetooth() {
+  if (!connected) return;
+  dataChar->setValue((uint8_t *)&pkt, sizeof(pkt));
+  dataChar->notify();
+  notifications++;
 }
 
 // ---------------------------------------------------------------------
 void printHelp() {
   Serial.println(F("# ---- Sound Effect Shoes: debug keys (type, then Enter) ----"));
-  Serial.println(F("# 0 app line | 1 pressure | 2 gyro | 3 steps | 4 spin | 5 state | 6 XIAO"));
+  Serial.println(F("# 0 app line | 1 pressure | 2 gyro | 3 steps | 4 spin | 5 state | 6 Bluetooth"));
   Serial.println(F("# c re-measure gyro offset (keep still) | q quiet | h help"));
-  Serial.print(F("# parts: FSR ")); Serial.print(USE_FSR ? F("on") : F("OFF"));
-  Serial.print(F(", gyro ")); Serial.print(USE_IMU ? (imu.ok ? F("on") : F("NOT FOUND (check SDA/SCL/VCC)")) : F("OFF"));
-  Serial.print(F(", XIAO ")); Serial.print(USE_XIAO ? F("on") : F("OFF"));
+#if DEMO_MODE
+  Serial.println(F("# DEMO MODE: sensors not read, made-up movement (DEMO_MODE in config.h)"));
+#endif
+  Serial.print(F("# parts: FSR ")); Serial.print(USE_FSR ? F("on (D0)") : F("OFF"));
+  Serial.print(F(", gyro ")); Serial.print(USE_IMU ? (imu.ok ? F("on") : F("NOT FOUND (check D4 SDA / D5 SCL / VCC / GND)")) : F("OFF"));
   Serial.print(F(", steps from ")); Serial.println(stepsFromFsr ? F("pressure sensor") : F("gyro board"));
+  Serial.print(F("# Bluetooth name ")); Serial.println(bleName());
 }
 
 void calibrateGyro() {
-#if USE_IMU
+#if USE_IMU && !DEMO_MODE
   if (!imu.ok) { Serial.println(F("# gyro not found, can't calibrate")); return; }
   Serial.println(F("# measuring gyro offset, keep the shoe still..."));
   imu.calibrate();
@@ -139,26 +180,38 @@ void fillPacket() {
   pkt.az      = (int16_t)(imu.az * 100);
   pkt.yawRate = (int16_t)constrain(yawDps, -32000.0f, 32000.0f);
   pkt.gyro    = (uint16_t)constrain(imu.gyroDps(), 0.0f, 65000.0f);
-  pkt.flags   = (imu.ok ? FLAG_IMU_OK : 0) | (steps.down ? FLAG_FOOT_DOWN : 0) | (xiao.ok() ? FLAG_XIAO_OK : 0);
+  pkt.flags   = (imu.ok ? FLAG_IMU_OK : 0) | (steps.down ? FLAG_FOOT_DOWN : 0) | FLAG_XIAO_OK;
 }
+
+#if DEMO_MODE
+// Cycles STILL -> WALK -> RUN -> SPIN every 4 seconds.
+void makeDemoPacket(uint32_t now) {
+  static uint8_t lastPhase = 0xFF;
+  static uint32_t lastStep = 0;
+  uint8_t phase = (now / 4000) % 4;
+  pkt.state = phase;
+  uint16_t stepEvery = phase == 1 ? 1100 : 700;
+  if ((phase == 1 || phase == 2) && now - lastStep > stepEvery) {
+    lastStep = now; pkt.steps++; pkt.stepMs = stepEvery;
+  }
+  if (phase == 3 && lastPhase != 3) pkt.spins++;
+  lastPhase = phase;
+  pkt.spinPct = phase == 3 ? 100 : 0;
+  pkt.fsr = (phase == 1 || phase == 2) ? ((now - lastStep < 300) ? 2500 : 100) : (phase == 0 ? 1800 : 1200);
+  pkt.ax = 0; pkt.ay = 0; pkt.az = 100;
+  pkt.yawRate = phase == 3 ? 500 : 0;
+  pkt.gyro = phase == 0 ? 2 : (phase == 3 ? 500 : 150);
+  pkt.flags = FLAG_IMU_OK | FLAG_XIAO_OK;
+}
+#endif
 
 // ---------------------------------------------------------------------
 // Output for each debug mode. "name:value" pairs work in the Serial Plotter.
 void printAppLine() {
   // FOOT,state,spins,spinPct,fsr,steps,stepMs,ax,ay,az,yawRate,gyro,flags
-  Serial.print(FOOT);           Serial.print(',');
-  Serial.print(pkt.state);      Serial.print(',');
-  Serial.print(pkt.spins);      Serial.print(',');
-  Serial.print(pkt.spinPct);    Serial.print(',');
-  Serial.print(pkt.fsr);        Serial.print(',');
-  Serial.print(pkt.steps);      Serial.print(',');
-  Serial.print(pkt.stepMs);     Serial.print(',');
-  Serial.print(pkt.ax);         Serial.print(',');
-  Serial.print(pkt.ay);         Serial.print(',');
-  Serial.print(pkt.az);         Serial.print(',');
-  Serial.print(pkt.yawRate);    Serial.print(',');
-  Serial.print(pkt.gyro);       Serial.print(',');
-  Serial.println(pkt.flags);
+  Serial.printf("%c,%u,%u,%u,%u,%u,%u,%d,%d,%d,%d,%u,%u\n", FOOT,
+                pkt.state, pkt.spins, pkt.spinPct, pkt.fsr, pkt.steps, pkt.stepMs,
+                pkt.ax, pkt.ay, pkt.az, pkt.yawRate, pkt.gyro, pkt.flags);
 }
 
 void printDebug(uint32_t now) {
@@ -204,18 +257,13 @@ void printDebug(uint32_t now) {
       Serial.print(F(",spinPct:")); Serial.print(spin.progressPct());
       Serial.print(F("  "));        Serial.println(stateName(motion.state));
       break;
-    case MODE_XIAO:
-      if (now - lastSlow < 500) break;
+    case MODE_BLE:
+      if (now - lastSlow < 1000) break;
       lastSlow = now;
-#if USE_XIAO
-      Serial.print(F("# xiao: "));
-      Serial.print(xiao.ok() ? F("ok") : F("NOT ANSWERING (check D4/D5 wires and XIAO power)"));
-      Serial.print(F("  sent:"));   Serial.print(xiao.sent);
-      Serial.print(F("  failed:")); Serial.print(xiao.failed);
-      Serial.print(F("  last error code:")); Serial.println(xiao.lastErr);
-#else
-      Serial.println(F("# xiao: OFF (USE_XIAO is 0 in config.h)"));
-#endif
+      Serial.print(F("# bluetooth ")); Serial.print(bleName());
+      Serial.print(connected ? F(": connected") : F(": waiting for the laptop"));
+      Serial.print(F("  sent:")); Serial.print(notifications);
+      Serial.print(F("  state=")); Serial.println(stateName(pkt.state));
       break;
   }
 }
@@ -242,19 +290,19 @@ void printEvents() {
 // ---------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
-#if USE_FSR
+  Serial.setTxTimeoutMs(0);   // never wait on USB: with no Serial Monitor open, printing would stall
+#if USE_FSR && !DEMO_MODE
   fsr.begin();
+  pinMode(FSR_PIN, INPUT);
 #endif
-#if USE_IMU || USE_XIAO
-  Wire.begin();
+#if USE_IMU && !DEMO_MODE
+  Wire.begin(SDA_PIN, SCL_PIN);
   Wire.setClock(100000);
-  i2cPullupsOff();
-#endif
-#if USE_IMU
   imu.begin();
 #endif
+  startBluetooth();
   delay(300);
-  Serial.print(F("# Sound Effect Shoes, Minima foot ")); Serial.println(FOOT);
+  Serial.print(F("# Sound Effect Shoes, XIAO foot ")); Serial.println(FOOT);
   calibrateGyro();
   printHelp();
   lastSample = millis();
@@ -268,15 +316,19 @@ void loop() {
   float dt = (now - lastSample) / 1000.0f;
   lastSample = now;
 
+#if DEMO_MODE
+  makeDemoPacket(now);
+#else
   readSensors(now, dt);
   printEvents();
+#endif
 
   if (now - lastSend >= 1000 / SEND_HZ) {
     lastSend = now;
+#if !DEMO_MODE
     fillPacket();
-#if USE_XIAO
-    xiao.send(pkt);
 #endif
-    printDebug(now);
+    sendBluetooth();
+    if (Serial.availableForWrite() >= 64) printDebug(now);   // skip if nobody is reading USB
   }
 }

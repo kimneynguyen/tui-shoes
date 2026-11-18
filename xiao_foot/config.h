@@ -7,9 +7,12 @@
 
 // ---------- Turn parts on/off (for debugging one part at a time) ----------
 // Set a part to 0 to run the shoe without it. Everything else keeps working.
-#define USE_FSR   1            // pressure sensor in the sole (A0)
-#define USE_IMU   1            // MPU-6050 gyro on the breadboard (SDA/SCL)
-#define USE_XIAO  1            // send to the XIAO (Bluetooth) over SDA/SCL
+#define USE_FSR   1            // pressure sensor in the sole (D0)
+#define USE_IMU   1            // MPU-6050 gyro on the breadboard (D4 SDA / D5 SCL)
+
+// 1 = no sensors needed: makes up still -> walk -> run -> spin every 4 seconds,
+// to test Bluetooth and the laptop app on their own.
+#define DEMO_MODE 0
 
 // Where steps come from:
 //   1 = pressure sensor (a step = the foot pressing down)
@@ -19,14 +22,16 @@
 
 // ---------- Timing ----------
 #define SAMPLE_HZ   100        // how often the sensors are read
-#define SEND_HZ     25         // how often numbers go to USB and the XIAO
+#define SEND_HZ     25         // how often numbers go to USB and Bluetooth
 
 // ---------- Pins and addresses ----------
-#define FSR_PIN     A0
+// The labels printed on the XIAO: D0 = A0, D4 = SDA, D5 = SCL.
+#define FSR_PIN     D0
+#define SDA_PIN     D4
+#define SCL_PIN     D5
 #define MPU_ADDR    0x68       // 0x69 if the GY-521 AD0 pin is wired to VCC
-#define XIAO_ADDR   0x08       // must match xiao_radio.ino
 
-// ---------- Pressure sensor (0..4095) ----------
+// ---------- Pressure sensor (0..4095, FSR from 3.3 V with 10k to GND) ----------
 // The shoe learns how hard this person presses. "Foot down" is when pressure
 // goes above FSR_PRESS_FRAC of that, and "foot up" is below FSR_RELEASE_FRAC.
 #define FSR_MIN_PRESS     150  // anything below this is never "foot down" (noise)

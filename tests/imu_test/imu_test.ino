@@ -1,6 +1,6 @@
 /*
-  Gyro board (MPU-6050 / GY-521) test (Minima + gyro only, unplug the XIAO's D4/D5)
-  Wiring: VCC -> 5V, GND -> GND, SDA -> SDA (A4), SCL -> SCL (A5).
+  Gyro board (MPU-6050 / GY-521) test (XIAO ESP32-C6, board XIAO_ESP32C6)
+  Wiring: VCC -> + rail (3.3 V), GND -> - rail, SDA -> D4, SCL -> D5.
 
   Open Serial Monitor or Serial Plotter at 115200.
   Expect, lying flat and still: one of ax/ay/az near 1.00 (or -1.00), the others near 0,
@@ -14,7 +14,7 @@ void reg(uint8_t r, uint8_t v) { Wire.beginTransmission(GYRO_ADDR); Wire.write(r
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin();
+  Wire.begin(D4, D5);   // SDA, SCL
   reg(0x6B, 0x00);   // wake up
   reg(0x1B, 0x18);   // gyro +/-2000 deg/s
   reg(0x1C, 0x10);   // accel +/-8 g
@@ -25,7 +25,7 @@ void setup() {
   Wire.requestFrom(GYRO_ADDR, (uint8_t)1);
   int who = Wire.available() ? Wire.read() : -1;
   Serial.print("# WHO_AM_I = 0x"); Serial.print(who, HEX);
-  Serial.println(who == 0x68 ? "  (GYRO_ADDR-6050 found)" : (who == -1 ? "  NOT FOUND: check SDA/SCL/VCC/GND" : "  (answered, unusual id but may still work)"));
+  Serial.println(who == 0x68 ? "  (MPU-6050 found)" : (who == -1 ? "  NOT FOUND: check SDA (D4) / SCL (D5) / VCC / GND" : "  (answered, unusual id but may still work)"));
 }
 
 void loop() {
