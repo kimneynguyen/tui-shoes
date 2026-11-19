@@ -2,6 +2,41 @@
 
 Two people. One shoe each. Together you remix a song with your feet.
 
+## Wizard of Oz soundboard (no sensors needed)
+
+The wizard carries a laptop, follows the wearer, and plays the shoes' sounds from the laptop by pressing keys. Nothing to upload to the boards. There are two versions to compare:
+
+- **Version A (main)**, `wizard/index.html`: every movement has its own sound.
+- **Version B (flexible)**, `wizard/flex.html`: Walk and Run taps set the background volume, and Spin cycles through the colors the wearer has scanned. It tests whether people like more flexibility in the shoes.
+
+Each page links to the other at the top.
+
+1. Open `wizard/index.html` in Chrome (double-click it), or run `python3 -m http.server` in this folder and go to `http://localhost:8000/wizard/`.
+2. Drag your own audio files (MP3, WAV, M4A...) onto each button to give it a sound. Empty buttons have a dashed border and say "Empty: drop a sound file here". Pressing an empty one just logs "(no sound yet)". To try things before you have files, use **Setup > Fill empty slots with test sounds**.
+3. Click **Start sound**, then **Start session** and clap on camera (it beeps and flashes white at time zero).
+4. Follow the wearer and press keys:
+
+| Key | What the wearer does | Version A | Version B |
+|---|---|---|---|
+| `W` | walk | Walk sound (loops) | tap on every step: world volume follows tap speed |
+| `R` | run | Run sound (loops) | same as `W`; fast taps = loud |
+| `S` | stand still | pauses all sound until the next movement | same |
+| `Space` | spin | Spin sound | Spin sound, then the next color in the library |
+| `K` | karate kick | Karate kick sound | same |
+| `G` | giant step | Giant step sound | same |
+| `D` | dancer's pose | Dancer's pose sound | same |
+| `J` | skipping | Skipping sound | same |
+| `1` `2` `3` | toe touches Red, Blue, Yellow | the world loop switches to that color's sound | the color joins the library (max 3, oldest out) and starts playing |
+| `L` | | world loop on/off | same |
+| `Esc` | | STOP ALL | same |
+
+Only one movement sound plays at a time: a new one cuts the last. The world loop plays underneath, at 25% in Version A (in Version B, 25% when nobody is tapping), and dips while a one-shot movement sound plays. Before any color is scanned it plays the **Default world sound** (drop a file on that slot).
+
+Both versions share the same sounds, names and keys, so a file you drop in one shows up in the other. Each version keeps its own session log, which you export with **Export CSV**. The **Setup** tab renames, adds or removes movements and colors, changes keys, sets volumes and Loop, and exports the whole setup (sound files included) as one .json file.
+
+![Version A](docs/wizard-a.png)
+![Version B](docs/wizard-b.png)
+
 ## Pictures
 
 **The music app** with the left shoe live over Bluetooth (40 updates a second). The right player is on the simulator.

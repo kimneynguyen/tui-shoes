@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TUI Shoes</title>
+<link rel="icon" href="data:,">
+<style>
+:root{--bg:#0e1014;--panel:#171a21;--line:#2a2f3a;--text:#e9ebf1;--mute:#8d95a8;--accent:#a58bff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px}
+main{max-width:760px;width:100%}
+h1{font-size:28px;margin:0 0 4px}
+p.sub{color:var(--mute);margin:0 0 24px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+a.card{display:block;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;color:inherit;text-decoration:none;transition:border-color .15s,transform .15s}
+a.card:hover{border-color:var(--accent);transform:translateY(-2px)}
+a.card b{display:block;font-size:16px;margin-bottom:6px;color:var(--accent)}
+a.card span{color:var(--mute);font-size:14px}
+footer{margin-top:24px;color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<main>
+  <h1>TUI Shoes</h1>
+  <p class="sub">Shoes that make music. Open a soundboard in Chrome or Edge.</p>
+  <div class="grid">
+    <a class="card" href="wizard/index.html"><b>Wizard soundboard: Version A</b><span>Follow the wearer and trigger world loops, colors and movement sounds.</span></a>
+    <a class="card" href="wizard/flex.html"><b>Wizard soundboard: Version B</b><span>The flexible version with a color library and tap-tempo world volume.</span></a>
+    <a class="card" href="sampler/index.html"><b>Music sampler</b><span>Two players remix a song with their feet over Bluetooth, or with sliders.</span></a>
+  </div>
+  <footer>Sounds you drop in stay in your own browser. Nothing is uploaded.</footer>
+</main>
+</body>
+</html>
