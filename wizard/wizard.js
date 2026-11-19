@@ -667,7 +667,7 @@ function renderSetup(){
     <td>${label[inp.type]}</td>
     <td><input type="text" value="${esc(inp.name)}" data-field="name" data-id="${inp.id}"></td>
     <td><input type="text" value="${esc(inp.hint || '')}" data-field="hint" data-id="${inp.id}"></td>
-    <td><button class="keybtn ${capturing === inp.id ? 'capturing' : ''}" data-key="${inp.id}">${capturing === inp.id ? 'press...' : (keyLabel(inp.key) || 'none')}</button></td>
+    <td><button class="keybtn ${capturing === inp.id ? 'capturing' : ''}" data-key="${inp.id}">${capturing === inp.id ? 'press...' : (esc(keyLabel(inp.key)) || 'none')}</button></td>
     <td>${inp.type === 'color' ? `<input type="color" value="${inp.color}" data-field="color" data-id="${inp.id}">` : ''}</td>
     ${hasSound ? soundCell(inp.id) : `<td class="help">${inp.type === 'still' ? 'pauses all sound' : inp.type === 'world' ? 'turns the world loop on/off' : ''}</td>`}
     <td>${hasSound ? `<input type="range" min="0" max="100" value="${inp.volume ?? 80}" data-field="volume" data-id="${inp.id}"> <span class="help">${inp.volume ?? 80}%</span>` : ''}</td>
@@ -760,6 +760,21 @@ async function exportConfig(){
   }
   download(new Blob([JSON.stringify({app: 'tui-shoes-wizard', version: 2, config, files})], {type: 'application/json'}), 'tui-shoes-wizard-setup.json');
 }
+// Setup files get shared between laptops, so anything that ends up in HTML attributes must be checked.
+function cleanConfig(c){
+  const types = ['step', 'still', 'spin', 'move', 'color', 'world'];
+  const num = (v, d, a, b) => Number.isFinite(+v) ? clamp(+v, a, b) : d;
+  const inputs = c.inputs.filter(i => i && /^[\w-]+$/.test(i.id) && types.includes(i.type)).map(i => Object.assign({}, i, {
+    name: String(i.name ?? ''), hint: String(i.hint ?? ''),
+    key: typeof i.key === 'string' && i.key.length === 1 ? i.key : '',
+  }, 'volume' in i ? {volume: num(i.volume, 80, 0, 100)} : {}, i.type === 'color' ? {color: /^#[0-9a-f]{6}$/i.test(i.color) ? i.color : '#888888'} : {})).map(i => {
+    if (i.type !== 'color') delete i.color;
+    return i;
+  });
+  const d = defaultConfig(), world = Object.assign({}, d.world, c.world);
+  for (const k of Object.keys(d.world)) if (typeof d.world[k] === 'number') world[k] = num(world[k], d.world[k], 0, 10000);
+  return Object.assign({}, c, {inputs, world, library: {size: num(c.library && c.library.size, d.library.size, 1, 6)}});
+}
 async function importConfig(file){
   try{
     const j = JSON.parse(await file.text());
@@ -770,7 +785,7 @@ async function importConfig(file){
       await idb.put(id, {name: f.name, type: f.type, data: bytes.buffer});
       buffers.delete('f:' + id);
     }
-    config = j.config; saveConfig();
+    config = cleanConfig(j.config); saveConfig();
     if (started){ await Promise.all(allSounds().map(getBuffer)); if (worldVoice) worldVoice.key = ''; updateWorldSound(); }
     renderAll(); toast('Setup imported');
   }catch(e){ toast('Import failed: ' + e.message); }
