@@ -200,6 +200,7 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
 // ===================== constants =====================
 const SERVICE_UUID = '7b1e0001-5d2c-4c3b-9a41-50a1c5717e00';   // must match xiao_foot.ino
 const DATA_UUID    = '7b1e0002-5d2c-4c3b-9a41-50a1c5717e00';
+const FOOT_UUID    = '7b1e0003-5d2c-4c3b-9a41-50a1c5717e00';   // reads "L" or "R"
 const { MOVES, MOVE, MovementDetector, GAIT_NAMES, POSE_NAMES, EVENT_NAMES } = window.Moves;
 const LIVE_MS = Moves.TUNING.LIVE_MS;
 const PLOT_MS = 10000;
@@ -725,28 +726,34 @@ setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; 
 async function connectBLE(id){
   if (!navigator.bluetooth){ setStatus('Bluetooth needs Chrome or Edge, opened from localhost or https.'); return; }
   try{
-    setStatus(`Pick "MusicShoe-${id}" in the popup...`);
+    setStatus(`Pick "MusicShoe-${id}" in the popup. Not there? Any shoe in the list will do (macOS can show an old name): the app asks the shoe which foot it is.`);
     // Either filter is enough: the name, or the shoe's service (macOS can show a stale cached name)
     const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}, {services:[SERVICE_UUID]}], optionalServices:[SERVICE_UUID]});
-    if (dev.name && !dev.name.startsWith('MusicShoe-' + id)) logApp(`picked "${dev.name}" for the ${FOOT_NAME[id].toLowerCase()} shoe. If it's the other shoe, set FOOT in its config.h`);
-    let ch = null;
+    let foot = id, ch = null;
     const onData = e => {
       const v = e.target.value;
-      if (v.byteLength >= 20) ingest(id, decodePacket(v), 'Bluetooth');
-      else logDbg(id, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running xiao_foot?`);
+      if (v.byteLength >= 20) ingest(foot, decodePacket(v), 'Bluetooth');
+      else logDbg(foot, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running xiao_foot?`);
     };
     const run = async () => {
       if (ch) ch.removeEventListener('characteristicvaluechanged', onData);
       const server = await dev.gatt.connect();
       const svc = await server.getPrimaryService(SERVICE_UUID);
+      try{
+        const said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim();
+        if (said === 'L' || said === 'R'){
+          if (said !== foot) logApp(`"${dev.name || 'unnamed'}" says it is the ${FOOT_NAME[said].toLowerCase()} shoe, so it's used as the ${FOOT_NAME[said].toLowerCase()} shoe`);
+          foot = said;
+        }
+      }catch(e){ logApp(`"${dev.name || 'unnamed'}" doesn't say which foot it is (older firmware), using it as the ${FOOT_NAME[foot].toLowerCase()} shoe`); }
       ch = await svc.getCharacteristic(DATA_UUID);
       ch.addEventListener('characteristicvaluechanged', onData);
       await ch.startNotifications();
-      setStatus(`${FOOT_NAME[id]} shoe connected.`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe connected by Bluetooth (${dev.name})`);
+      setStatus(`${FOOT_NAME[foot]} shoe connected.`); logApp(`${FOOT_NAME[foot].toLowerCase()} shoe connected by Bluetooth (listed as "${dev.name || 'unnamed'}")`);
     };
     dev.addEventListener('gattserverdisconnected', () => {
-      setStatus(`${FOOT_NAME[id]} shoe dropped, reconnecting...`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe Bluetooth dropped, reconnecting`);
-      setTimeout(() => run().catch(() => { setStatus(`${FOOT_NAME[id]} shoe lost. Click Connect again.`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe lost`); }), 800);
+      setStatus(`${FOOT_NAME[foot]} shoe dropped, reconnecting...`); logApp(`${FOOT_NAME[foot].toLowerCase()} shoe Bluetooth dropped, reconnecting`);
+      setTimeout(() => run().catch(() => { setStatus(`${FOOT_NAME[foot]} shoe lost. Click Connect again.`); logApp(`${FOOT_NAME[foot].toLowerCase()} shoe lost`); }), 800);
     });
     await run();
   }catch(e){ setStatus(e.name === 'NotFoundError' ? 'No shoe picked.' : 'Bluetooth error: ' + e.message); }

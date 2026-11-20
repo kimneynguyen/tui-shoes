@@ -49,6 +49,7 @@
 // Must match the app (sampler/index.html)
 #define SERVICE_UUID "7b1e0001-5d2c-4c3b-9a41-50a1c5717e00"
 #define DATA_UUID    "7b1e0002-5d2c-4c3b-9a41-50a1c5717e00"
+#define FOOT_UUID    "7b1e0003-5d2c-4c3b-9a41-50a1c5717e00"
 
 enum Mode : char { MODE_APP = '0', MODE_FSR = '1', MODE_IMU = '2', MODE_STEPS = '3',
                    MODE_SPIN = '4', MODE_STATE = '5', MODE_BLE = '6', MODE_MOVES = '7',
@@ -96,6 +97,10 @@ void startBluetooth() {
   dataChar = svc->createCharacteristic(DATA_UUID,
                BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
   dataChar->addDescriptor(new BLE2902());
+  // "L" or "R": the app reads this after connecting, because macOS can list a
+  // shoe under an old cached name.
+  BLECharacteristic *footChar = svc->createCharacteristic(FOOT_UUID, BLECharacteristic::PROPERTY_READ);
+  footChar->setValue(String(FOOT));
   svc->start();
 
   // Flags + a 128-bit UUID + the name don't fit in one 31-byte packet. The app
@@ -109,19 +114,35 @@ void startBluetooth() {
   adv->setAdvertisementData(advData);
   adv->setScanResponseData(scanData);
   adv->setScanResponse(true);
+  // Loudest the C6 can send, so a shoe inside a case or behind a leg is still heard.
+  BLEDevice::setPower(ESP_PWR_LVL_P20, ESP_BLE_PWR_TYPE_DEFAULT);
+  BLEDevice::setPower(ESP_PWR_LVL_P20, ESP_BLE_PWR_TYPE_ADV);
   BLEDevice::startAdvertising();
 }
 
 bool advertising() { return BLEDevice::getAdvertising()->isAdvertising(); }
 
-// If advertising ever stops while nobody is connected, start it again.
+int txPowerDbm() {
+  int lvl = esp_ble_tx_power_get(ESP_BLE_PWR_TYPE_ADV);
+  if (lvl < ESP_PWR_LVL_N15 || lvl > ESP_PWR_LVL_P20) return -128;
+  return lvl == ESP_PWR_LVL_P20 ? 20 : (lvl - ESP_PWR_LVL_N0) * 3;
+}
+
+// If advertising ever stops while nobody is connected, start it again. Every
+// 30 s without a connection it's also restarted from scratch, in case the radio
+// says it's advertising but nothing goes out.
 void keepAdvertising(uint32_t now) {
-  static uint32_t lastCheck = 0;
+  static uint32_t lastCheck = 0, lastRefresh = 0;
   if (now - lastCheck < 2000) return;
   lastCheck = now;
-  if (!connected && !advertising()) {
+  if (connected) { lastRefresh = now; return; }
+  if (!advertising()) {
     BLEDevice::startAdvertising();
     Serial.println(F("# bluetooth: advertising had stopped, restarted it"));
+  } else if (now - lastRefresh > 30000) {
+    lastRefresh = now;
+    BLEDevice::getAdvertising()->stop();
+    BLEDevice::startAdvertising();
   }
 }
 
@@ -160,6 +181,7 @@ void printHelp() {
   Serial.print(F(", steps from ")); Serial.println(stepsFromFsr ? F("pressure sensor") : F("gyro board"));
   Serial.print(F("# Bluetooth name ")); Serial.print(bleName());
   Serial.print(F(", address ")); Serial.print(BLEDevice::getAddress().toString().c_str());
+  Serial.print(F(", power ")); Serial.print(txPowerDbm()); Serial.print(F(" dBm"));
   Serial.print(F(", last reset: ")); Serial.println(resetReason());
 }
 
@@ -333,6 +355,7 @@ void printDebug(uint32_t now) {
       Serial.print(F("# bluetooth ")); Serial.print(bleName());
       Serial.print(connected ? F(": connected") : advertising() ? F(": advertising, waiting for the laptop") : F(": NOT advertising"));
       Serial.print(F("  address ")); Serial.print(BLEDevice::getAddress().toString().c_str());
+      Serial.print(F("  power ")); Serial.print(txPowerDbm()); Serial.print(F(" dBm"));
       Serial.print(F("  sent:")); Serial.print(notifications);
       Serial.print(F("  state=")); Serial.println(stateName(pkt.state));
       break;
