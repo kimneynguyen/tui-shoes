@@ -7,27 +7,31 @@
           everything on 3.3 V from the XIAO's 3V3 pin. Nothing on the 5V pin.
 
   Reads the sensors, works out what this foot is doing, and sends it to the
-  laptop over Bluetooth as "MusicShoe-L" or "MusicShoe-R":
-     STILL  no steps for 2 seconds      -> laptop pauses the sound
-     WALK   steps at a normal pace      -> default volume
-     RUN    fast steps                  -> max volume
-     SPIN   a full 360 turn             -> laptop switches to the next sound
+  laptop over Bluetooth as "MusicShoe-L" or "MusicShoe-R". This foot reports:
+     gait   STILL / WALK / RUN / SPIN (steps and 360 turns)
+     pose   FLAT / TIPTOE / HEEL / SIDE / SKY (how the shoe is tilted)
+     events STOMP, TOE TAP, KICK, SHUFFLE
+     plus when it presses down and how long it was in the air before,
+  so the app can combine both feet into jump, hop, skip, lunge, dancer's pose
+  and feet to the sky (sampler/movements.js).
 
   Files (each one is a tab in the Arduino app):
      config.h      settings: FOOT, parts on/off, thresholds   <<< start here
      fsr_sensor.h  the pressure sensor
      imu.h         the MPU-6050 gyro
-     motion.h      steps, spins, walk / run / still
+     motion.h      steps, spins, walk / run / still, pose, one-foot events
      packet.h      the 20 bytes sent to the laptop
 
   DEBUGGING: open the Serial Monitor (115200), type a key and press Enter:
      0  app mode: the line the music app reads over USB (default)
-     1  pressure sensor only        4  spin detector only
-     2  gyro board only             5  walk / run / still decision
-     3  step detector only          6  Bluetooth status
-     c  re-measure the gyro offset (keep the shoe still)
+     1  pressure sensor only        5  walk / run / still decision
+     2  gyro board only             6  Bluetooth status
+     3  step detector only          7  movements: pose, pitch, roll, events
+     4  spin detector only
+     c  re-measure the gyro offset and "flat" (keep the shoe flat and still)
      q  quiet         h  this help
-  Modes 1-5 also work in Tools > Serial Plotter.
+  Every event prints a line like "# L STOMP (4.2)" in modes 0, 5 and 7.
+  Modes 1-5 and 7 also work in Tools > Serial Plotter.
   To run without a part, set USE_FSR / USE_IMU to 0 in config.h.
   To test Bluetooth and the app with no sensors, set DEMO_MODE to 1.
 */
@@ -47,7 +51,8 @@
 #define DATA_UUID    "7b1e0002-5d2c-4c3b-9a41-50a1c5717e00"
 
 enum Mode : char { MODE_APP = '0', MODE_FSR = '1', MODE_IMU = '2', MODE_STEPS = '3',
-                   MODE_SPIN = '4', MODE_STATE = '5', MODE_BLE = '6', MODE_QUIET = 'q' };
+                   MODE_SPIN = '4', MODE_STATE = '5', MODE_BLE = '6', MODE_MOVES = '7',
+                   MODE_QUIET = 'q' };
 
 FsrSensor fsr;
 Mpu6050 imu;
@@ -55,12 +60,14 @@ StepDetector steps;
 GravityTracker gravity;
 SpinDetector spin;
 MotionClassifier motion;
+PoseTracker pose;
+EventDetector events;
 FootPacket pkt = {};
 
 char mode = MODE_APP;
-float yawDps = 0;
+float yawDps = 0, peakG = 0;
 uint32_t lastSample = 0, lastSend = 0, lastImuRetry = 0, lastSlow = 0;
-uint8_t lastState = 0xFF;
+uint8_t lastState = 0xFF, lastPose = 0xFF;
 
 const bool stepsFromFsr = USE_FSR && STEPS_FROM_FSR;
 
@@ -142,11 +149,12 @@ void sendBluetooth() {
 // ---------------------------------------------------------------------
 void printHelp() {
   Serial.println(F("# ---- Sound Effect Shoes: debug keys (type, then Enter) ----"));
-  Serial.println(F("# 0 app line | 1 pressure | 2 gyro | 3 steps | 4 spin | 5 state | 6 Bluetooth"));
-  Serial.println(F("# c re-measure gyro offset (keep still) | q quiet | h help"));
+  Serial.println(F("# 0 app line | 1 pressure | 2 gyro | 3 steps | 4 spin | 5 state | 6 Bluetooth | 7 movements"));
+  Serial.println(F("# c re-measure gyro offset and flat (shoe flat and still) | q quiet | h help"));
 #if DEMO_MODE
   Serial.println(F("# DEMO MODE: sensors not read, made-up movement (DEMO_MODE in config.h)"));
 #endif
+  if (!pose.axisOk) Serial.println(F("# WARNING: FORWARD_AXIS points up/down when flat, using the next axis. Fix FORWARD_AXIS in config.h"));
   Serial.print(F("# parts: FSR ")); Serial.print(USE_FSR ? F("on (D0)") : F("OFF"));
   Serial.print(F(", gyro ")); Serial.print(USE_IMU ? (imu.ok ? F("on") : F("NOT FOUND (check D4 SDA / D5 SCL / VCC / GND)")) : F("OFF"));
   Serial.print(F(", steps from ")); Serial.println(stepsFromFsr ? F("pressure sensor") : F("gyro board"));
@@ -164,6 +172,13 @@ void calibrateGyro() {
   Serial.print(imu.biasX, 2); Serial.print(' ');
   Serial.print(imu.biasY, 2); Serial.print(' ');
   Serial.println(imu.biasZ, 2);
+  pose.setFlat(imu.restAx, imu.restAy, imu.restAz);
+  gravity.x = imu.restAx; gravity.y = imu.restAy; gravity.z = imu.restAz;
+  Serial.print(F("# flat = up is x/y/z: "));
+  Serial.print(imu.restAx, 2); Serial.print(' ');
+  Serial.print(imu.restAy, 2); Serial.print(' ');
+  Serial.println(imu.restAz, 2);
+  if (!pose.axisOk) Serial.println(F("# WARNING: FORWARD_AXIS points up/down, fix it in config.h"));
 #endif
 }
 
@@ -173,7 +188,7 @@ void handleSerial() {
     if (c == '\r' || c == '\n' || c == ' ') continue;
     if (c == 'h' || c == '?') printHelp();
     else if (c == 'c') calibrateGyro();
-    else if ((c >= '0' && c <= '6') || c == 'q') {
+    else if ((c >= '0' && c <= '7') || c == 'q') {
       mode = c;
       Serial.print(F("# mode ")); Serial.println(c);
     } else {
@@ -196,7 +211,10 @@ void readSensors(uint32_t now, float dt) {
     gravity.update(imu.ax, imu.ay, imu.az);
     yawDps = gravity.yawRate(imu.gx, imu.gy, imu.gz);
     spin.update(now, yawDps, dt);
+    pose.update(now, gravity.x, gravity.y, gravity.z, imu.gx, imu.gy, imu.gz);
+    peakG = fmaxf(peakG, imu.accelG());
     if (!stepsFromFsr) steps.updateAccel(now, imu.accelG());
+    events.update(now, motion.state, steps, pose, gravity, imu.ax, imu.ay, imu.az, imu.gyroDps(), yawDps);
   } else if (now - lastImuRetry > 2000) {
     lastImuRetry = now;          // unplugged? keep trying
     if (imu.begin()) Serial.println(F("# gyro found again"));
@@ -213,43 +231,57 @@ void fillPacket() {
   pkt.fsr     = fsr.value;
   pkt.steps   = steps.count;
   pkt.stepMs  = steps.intervalMs;
-  pkt.ax      = (int16_t)(imu.ax * 100);
-  pkt.ay      = (int16_t)(imu.ay * 100);
-  pkt.az      = (int16_t)(imu.az * 100);
+  pkt.pitch   = (int8_t)constrain(pose.pitch, -127.0f, 127.0f);
+  pkt.roll    = (int8_t)constrain(pose.roll, -127.0f, 127.0f);
+  pkt.peakG   = (uint8_t)constrain(peakG * 16, 0.0f, 255.0f);
+  pkt.gyro    = (uint8_t)constrain(imu.gyroDps() / 8, 0.0f, 255.0f);
   pkt.yawRate = (int16_t)constrain(yawDps, -32000.0f, 32000.0f);
-  pkt.gyro    = (uint16_t)constrain(imu.gyroDps(), 0.0f, 65000.0f);
-  pkt.flags   = (imu.ok ? FLAG_IMU_OK : 0) | (steps.down ? FLAG_FOOT_DOWN : 0) | FLAG_XIAO_OK;
+  pkt.event   = events.last;
+  pkt.events  = events.count;
+  pkt.pose    = pose.pose;
+  pkt.air10   = (uint8_t)min(steps.lastAirMs / 10, 255);
+  pkt.flags   = (imu.ok ? FLAG_IMU_OK : 0) | (steps.down ? FLAG_FOOT_DOWN : 0) | FLAG_XIAO_OK |
+                (steps.touching ? FLAG_TOUCHING : 0);
+  peakG = 0;
 }
 
 #if DEMO_MODE
-// Cycles STILL -> WALK -> RUN -> SPIN every 4 seconds.
+// Every 3 seconds: STILL, WALK, RUN, SPIN, then each pose and each event once.
 void makeDemoPacket(uint32_t now) {
   static uint8_t lastPhase = 0xFF;
   static uint32_t lastStep = 0;
-  uint8_t phase = (now / 4000) % 4;
-  pkt.state = phase;
+  uint8_t phase = (now / 3000) % 12;
+  bool newPhase = phase != lastPhase;
+  lastPhase = phase;
+  pkt.state = phase < 4 ? phase : STATE_STILL;
   uint16_t stepEvery = phase == 1 ? 1100 : 700;
   if ((phase == 1 || phase == 2) && now - lastStep > stepEvery) {
-    lastStep = now; pkt.steps++; pkt.stepMs = stepEvery;
+    lastStep = now; pkt.steps++; pkt.stepMs = stepEvery; pkt.air10 = 40;
   }
-  if (phase == 3 && lastPhase != 3) pkt.spins++;
-  lastPhase = phase;
+  if (phase == 3 && newPhase) pkt.spins++;
   pkt.spinPct = phase == 3 ? 100 : 0;
-  pkt.fsr = (phase == 1 || phase == 2) ? ((now - lastStep < 300) ? 2500 : 100) : (phase == 0 ? 1800 : 1200);
-  pkt.ax = 0; pkt.ay = 0; pkt.az = 100;
+  const uint8_t poses[] = {POSE_FLAT, POSE_FLAT, POSE_FLAT, POSE_FLAT, POSE_TIPTOE, POSE_HEEL, POSE_SIDE, POSE_SKY};
+  pkt.pose = phase < 8 ? poses[phase] : POSE_FLAT;
+  pkt.pitch = pkt.pose == POSE_TIPTOE ? -30 : pkt.pose == POSE_HEEL ? 30 : pkt.pose == POSE_SKY ? 80 : 0;
+  pkt.roll = pkt.pose == POSE_SIDE ? 30 : 0;
+  if (phase >= 8 && newPhase) { pkt.event = EVENT_STOMP + (phase - 8); pkt.events++; }
+  bool down = (phase == 1 || phase == 2) ? (now - lastStep < 300) : pkt.pose != POSE_SKY;
+  pkt.fsr = down ? 2500 : 100;
+  pkt.peakG = 16;
   pkt.yawRate = phase == 3 ? 500 : 0;
-  pkt.gyro = phase == 0 ? 2 : (phase == 3 ? 500 : 150);
-  pkt.flags = FLAG_IMU_OK | FLAG_XIAO_OK;
+  pkt.gyro = phase == 3 ? 60 : 0;
+  pkt.flags = FLAG_IMU_OK | FLAG_XIAO_OK | (down ? FLAG_FOOT_DOWN | FLAG_TOUCHING : 0);
 }
 #endif
 
 // ---------------------------------------------------------------------
 // Output for each debug mode. "name:value" pairs work in the Serial Plotter.
 void printAppLine() {
-  // FOOT,state,spins,spinPct,fsr,steps,stepMs,ax,ay,az,yawRate,gyro,flags
-  Serial.printf("%c,%u,%u,%u,%u,%u,%u,%d,%d,%d,%d,%u,%u\n", FOOT,
+  // FOOT,state,spins,spinPct,fsr,steps,stepMs,pitch,roll,peakG,yawRate,gyro,flags,event,events,pose,air10
+  Serial.printf("%c,%u,%u,%u,%u,%u,%u,%d,%d,%u,%d,%u,%u,%u,%u,%u,%u\n", FOOT,
                 pkt.state, pkt.spins, pkt.spinPct, pkt.fsr, pkt.steps, pkt.stepMs,
-                pkt.ax, pkt.ay, pkt.az, pkt.yawRate, pkt.gyro, pkt.flags);
+                pkt.pitch, pkt.roll, pkt.peakG, pkt.yawRate, pkt.gyro, pkt.flags,
+                pkt.event, pkt.events, pkt.pose, pkt.air10);
 }
 
 void printDebug(uint32_t now) {
@@ -304,6 +336,22 @@ void printDebug(uint32_t now) {
       Serial.print(F("  sent:")); Serial.print(notifications);
       Serial.print(F("  state=")); Serial.println(stateName(pkt.state));
       break;
+    case MODE_MOVES:
+      Serial.print(F("pitch:"));    Serial.print(pose.pitch, 0);
+      Serial.print(F(",roll:"));    Serial.print(pose.roll, 0);
+      Serial.print(F(",flip:"));    Serial.print(pose.flip, 0);
+      Serial.print(F(",pitchRate:"));Serial.print(pose.pitchRate, 0);
+      Serial.print(F(",g10:"));     Serial.print(imu.accelG() * 10, 0);
+      Serial.print(F(",gyro:"));    Serial.print(imu.gyroDps(), 0);
+      Serial.print(F(",push100:")); Serial.print(events.push * 100, 0);
+      Serial.print(F(",down:"));    Serial.print(steps.down ? 1 : 0);
+      Serial.print(F(",touch:"));   Serial.print(steps.touching ? 1 : 0);
+      Serial.print(F(",airMs:"));   Serial.print(steps.lastAirMs);
+      Serial.print(F(",taps:"));    Serial.print(events.taps);
+      Serial.print(F(",pushes:"));  Serial.print(events.pushes);
+      Serial.print(F("  "));        Serial.print(poseName(pose.pose));
+      Serial.print(' ');            Serial.println(stateName(motion.state));
+      break;
   }
 }
 
@@ -312,10 +360,29 @@ void printEvents() {
     Serial.print(F("# step ")); Serial.print(steps.count);
     Serial.print(F(" (")); Serial.print(steps.intervalMs); Serial.println(F(" ms)"));
   }
-  bool showEvents = mode == MODE_APP || mode == MODE_SPIN || mode == MODE_STATE;
+  bool showEvents = mode == MODE_APP || mode == MODE_SPIN || mode == MODE_STATE || mode == MODE_MOVES;
   if (spin.spun && showEvents) {
     Serial.print(F("# ")); Serial.print(FOOT);
     Serial.print(F(" SPIN #")); Serial.println(spin.spins);
+  }
+  bool showMoves = mode == MODE_APP || mode == MODE_STATE || mode == MODE_MOVES;
+  if (events.fired && showMoves) {
+    Serial.print(F("# ")); Serial.print(FOOT); Serial.print(' ');
+    Serial.print(eventName(events.last));
+    Serial.print(F(" (")); Serial.print(events.info, 1); Serial.println(')');
+  }
+  if (pose.pose != lastPose) {
+    if (showMoves && lastPose != 0xFF) {
+      Serial.print(F("# ")); Serial.print(FOOT);
+      Serial.print(F(" pose ")); Serial.print(poseName(pose.pose));
+      Serial.print(F(" (pitch ")); Serial.print(pose.pitch, 0);
+      Serial.print(F(", roll ")); Serial.print(pose.roll, 0); Serial.println(')');
+    }
+    lastPose = pose.pose;
+  }
+  if (steps.stepped && mode == MODE_MOVES) {
+    Serial.print(F("# ")); Serial.print(FOOT);
+    Serial.print(F(" landed after ")); Serial.print(steps.lastAirMs); Serial.println(F(" ms in the air"));
   }
   if (motion.state != lastState) {
     if (showEvents) {

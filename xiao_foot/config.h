@@ -10,7 +10,8 @@
 #define USE_FSR   1            // pressure sensor in the sole (D0)
 #define USE_IMU   1            // MPU-6050 gyro on the breadboard (D4 SDA / D5 SCL)
 
-// 1 = no sensors needed: makes up still -> walk -> run -> spin every 4 seconds,
+// 1 = no sensors needed: every 3 seconds makes up still, walk, run, spin, then
+// tiptoe, heel, side, sky, then stomp, toe tap, kick, shuffle,
 // to test Bluetooth and the laptop app on their own.
 #define DEMO_MODE 0
 
@@ -61,3 +62,53 @@
 #define SPIN_WINDOW_MS    3000   // the whole spin has to happen within this time
 #define SPIN_GAP_MS       400    // slowing down for longer than this cancels the spin
 #define SPIN_SHOW_MS      700    // after a spin, report SPIN for this long
+
+// =====================================================================
+//  Movement detection (one foot). Moves that need both feet (jump, hop,
+//  skip, lunge, dancer's pose, feet to the sky) are tuned in the app:
+//  the TUNING block at the top of sampler/movements.js.
+//  Every number here is a first guess: none of it is tested on real feet yet.
+//  Watch debug key 7 while you move to see the numbers.
+// =====================================================================
+
+// ---------- How the gyro board sits in the shoe ----------
+// Which axis printed on the GY-521 points to the toes: 0 = X, 1 = Y, 2 = Z,
+// and FORWARD_SIGN 1 if the arrow points to the toes, -1 if it points to the heel.
+// Check with key 7: lift your toes and "pitch" should go UP (positive).
+// If "roll" moves instead, try the other axis. If pitch goes negative, flip the sign.
+#define FORWARD_AXIS      0
+#define FORWARD_SIGN      1
+// "Flat" is saved when the gyro offset is measured: at power on, and with key c.
+// Have the shoe flat on the floor (or stand normally) at those moments.
+
+// ---------- Foot tilt and feet to the sky (pose) ----------
+#define TILT_DEG          20     // toes down, heel down or rolled sideways more than this = tilted
+#define TILT_EXIT_DEG     12     // back under this = flat again
+#define SKY_PITCH_DEG     60     // toes up more than this = pointing at the sky
+#define SKY_FLIP_DEG      120    // or turned over more than this (sole facing the ceiling)
+#define POSE_HOLD_MS      250    // a new pose has to last this long before it counts
+
+// ---------- Stomp ----------
+#define STOMP_G           3.5f   // a hit harder than this (g) just after the foot presses down = stomp
+#define STOMP_WINDOW_MS   80     // how long after the press to look for the hit
+// Never while this foot is running.
+
+// ---------- Toe tap ----------
+#define TAP_RATE_DPS      120    // toes come down faster than this (deg/s)...
+#define TAP_G             1.4f   // ...then hit the floor harder than this (g), but softer than STOMP_G = one tap
+#define TAP_MAX_LIFT_MS   300    // sole off the ground longer than this before the hit = a step, not a tap
+#define TAP_COUNT         2      // this many taps in a row = TOE TAP (then every further tap)
+#define TAP_WINDOW_MS     1200   // taps further apart than this start a new row
+
+// ---------- Karate kick ----------
+#define KICK_GYRO_DPS     700    // foot in the air rotating faster than this (deg/s)...
+#define KICK_G            2.5f   // ...and accelerating harder than this (g) = kick
+#define KICK_MIN_AIR_MS   120    // foot has to be off the ground at least this long
+// One kick per lift, never while this foot is running.
+
+// ---------- Shuffle / slide ----------
+#define SHUFFLE_G         0.35f  // a push along the floor harder than this (g), sole touching...
+#define SHUFFLE_PUSHES    3      // ...this many pushes in a row = SHUFFLE
+#define SHUFFLE_GAP_MS    600    // pushes further apart than this start over
+#define SHUFFLE_NO_STEP_MS 800   // no step for this long before (sliding, not walking)
+#define SHUFFLE_REPEAT_MS 400    // while it goes on, report it at most this often

@@ -40,16 +40,21 @@ public:
     return true;
   }
 
-  // Measure the gyro's resting offset. The shoe must be still.
+  // Measure the gyro's resting offset, and which way is up while it rests
+  // (restAx/Ay/Az, used as "flat"). The shoe must be still.
+  float restAx = 0, restAy = 0, restAz = 1;
   void calibrate(uint16_t samples = 200) {
     biasX = biasY = biasZ = 0;
-    float sx = 0, sy = 0, sz = 0;
+    float sx = 0, sy = 0, sz = 0, sax = 0, say = 0, saz = 0;
     uint16_t n = 0;
     for (uint16_t i = 0; i < samples; i++) {
-      if (read()) { sx += gx; sy += gy; sz += gz; n++; }
+      if (read()) { sx += gx; sy += gy; sz += gz; sax += ax; say += ay; saz += az; n++; }
       delay(5);
     }
-    if (n) { biasX = sx / n; biasY = sy / n; biasZ = sz / n; }
+    if (n) {
+      biasX = sx / n; biasY = sy / n; biasZ = sz / n;
+      restAx = sax / n; restAy = say / n; restAz = saz / n;
+    }
   }
 
   float accelG() const { return sqrtf(ax * ax + ay * ay + az * az); }
