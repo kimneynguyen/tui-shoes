@@ -36,6 +36,10 @@ Every slot starts **empty**. Drop an audio file on a slot, click **Choose**, or 
 
 ![Monitor window](docs/monitor.png)
 
+**The pressure panel** (Play view): raw force from each shoe's sensor as it arrives, here while walking:
+
+![Pressure panel](docs/pressure-panel.png)
+
 **The step-rate graph** (Play view): steps per minute from each shoe's pressure sensor over the last 30 s, walking, then running, then walking again:
 
 ![Step-rate graph](docs/walk-run-graph.png)
@@ -115,6 +119,14 @@ cd sampler
 python3 -m http.server 8000
 ```
 Then go to `http://localhost:8000` in Chrome. Press **Start sound**, then **Connect Left shoe** (`MusicShoe-L`) and **Connect Right shoe** (`MusicShoe-R`).
+
+### The pressure panel: raw force from each shoe
+
+The **Pressure** panel (Play view, above the step-rate graph) shows each shoe's sensor reading as it arrives, 25 times a second: a big number (0-4095) and a bar per foot, plus a 10 s trace. It is not tied to steps, so holding, light presses and hard presses all show. Shaded areas are where the shoe counts the foot as down, and ticks on the top edge are counted steps. Under each number: the time between that foot's last two counted presses and its step count. The same raw number is next to "left / right pressure" on the step-rate graph and in each shoe's box lower down.
+
+Rough readings with the FSR wired from 3.3 V to D0 and 10k to GND: nothing on it 0-100, a light finger touch a few hundred, a firm press 1500-3000, a hard squeeze or standing on it 3500-4095.
+
+The Monitor log (set to **movements only**) has a line for every counted step, e.g. `>>> Left step #12 (pressure 2200, 1080 ms after this foot's last step = 111 steps/min on the graph)`. A press that moves the number but adds no line didn't cross the shoe's press level: press key `1` on the shoe to see `fsr`, `pressAt`, `releaseAt` and `rest`.
 
 ### The step-rate graph: setting walk vs run
 
@@ -251,7 +263,7 @@ One-foot numbers are in **`xiao_foot/config.h`** (upload again after changing th
 |---|---|
 | Fast walking counts as running | Drag the red line on the **Step rate** graph up (or `RUN_SPM` in the app's `TUNING`). The shoe's own `RUN_STEP_MS` only affects what key `5` and the Monitor show |
 | Running isn't detected | Drag the red line down. Kids and short legs step faster, so they may need 160-170 |
-| Steps are missed, or extra steps appear | Watch key `1`. Raise or lower `FSR_PRESS_FRAC` / `FSR_MIN_PRESS` |
+| Steps are missed, or extra steps appear | Watch key `1` (`fsr` against `pressAt` / `releaseAt` / `rest`). Raise or lower `FSR_PRESS_FRAC` / `FSR_MIN_PRESS`. Light steps missed after a hard one: lower `FSR_PEAK_HALF_MS` |
 | Spins don't count | Watch key `4`. Lower `SPIN_RATE_DPS` or `SPIN_DEG` |
 | Turning around counts as a spin | Raise `SPIN_DEG` (keep it above 270) |
 | Still takes too long / too short | `STILL_MS` (shoe) and `STOP_MS` (app) |

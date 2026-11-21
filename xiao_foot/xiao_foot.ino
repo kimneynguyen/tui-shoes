@@ -313,6 +313,8 @@ void printDebug(uint32_t now) {
       Serial.print(F("fsr:"));        Serial.print(fsr.value);
       Serial.print(F(",pressAt:"));   Serial.print((int)steps.pressAt);
       Serial.print(F(",releaseAt:")); Serial.print((int)steps.releaseAt);
+      Serial.print(F(",rest:"));      Serial.print((int)steps.rest);
+      Serial.print(F(",steps:"));     Serial.print(steps.count);
       Serial.print(F(",down:"));      Serial.println(steps.down ? 1000 : 0);
       break;
     case MODE_IMU:

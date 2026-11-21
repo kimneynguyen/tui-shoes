@@ -183,6 +183,29 @@ int main() {
     }
     CHECK(s.counts[EVENT_TOE_TAP] == 0, "walking foot slaps are not toe taps"); }
 
+  printf("Pressure sensor: press and release levels\n");
+  { // presses of `press` (300 ms) with `rest` between (400 ms), after one squeeze to `hard`
+    auto presses = [](uint16_t rest, uint16_t hard, uint16_t press) {
+      StepDetector s; uint32_t t = 0;
+      auto feed = [&](uint16_t v, int ms) { for (int i = 0; i < ms; i += 10) { t += 10; s.beginSample(); s.updateFsr(t, v); } };
+      feed(rest, 2000); feed(hard, 300); feed(rest, 700);
+      uint16_t c = s.count;
+      for (int i = 0; i < 10; i++) { feed(press, 300); feed(rest, 400); }
+      printf("        rest %u, squeeze %u, 10 presses of %u: %u counted (press at %.0f, release at %.0f)\n", rest, hard, press, s.count - c, s.pressAt, s.releaseAt);
+      return s.count - c;
+    };
+    CHECK(presses(30, 4095, 1200) >= 8, "one hard squeeze doesn't hide lighter presses for long");
+    CHECK(presses(900, 4095, 3000) == 10, "a sensor that never unloads (finger resting, 900) still counts presses");
+    CHECK(presses(1000, 4095, 2500) == 10, "insole preload (1000) still counts steps");
+    StepDetector s; uint32_t t = 0; bool allDown = true;
+    auto feed = [&](uint16_t v, int ms) { for (int i = 0; i < ms; i += 10) { t += 10; s.beginSample(); s.updateFsr(t, v); } };
+    feed(40, 1000); feed(2000, 300);
+    uint16_t c = s.count;
+    for (int i = 0; i < 6000; i++) { t += 10; s.beginSample(); s.updateFsr(t, 2000 + ((i / 37) % 2 ? 150 : -150)); allDown &= s.down; }
+    CHECK(allDown && s.count == c, "standing 60 s with weight shifts: stays down, no extra steps");
+    feed(40, 300);
+    CHECK(!s.down, "then lifting the foot: up"); }
+
   printf("Shuffle / slide\n");
   { Shoe s; s.still(2000, 600);
     for (int k = 0; k < 8; k++) {   // slide forward and back, sole touching lightly

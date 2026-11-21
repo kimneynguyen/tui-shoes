@@ -85,6 +85,13 @@ label.chk{display:block;margin:8px 0}
 .rateCtl{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--mute)}
 .rateCtl input[type=range]{width:170px}
 canvas#rateCv{width:100%;height:230px;background:#0a0c10;border-radius:8px;display:block;touch-action:none}
+.pressTop{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px}
+@media(max-width:700px){.pressTop{grid-template-columns:1fr}}
+.pressFoot{display:flex;align-items:center;gap:12px;background:#0f1217;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.pressFoot .big{font-size:30px;font-weight:750;font-variant-numeric:tabular-nums;min-width:78px;text-align:right}
+.pressFoot .bar{flex:1;height:16px}
+.pressFoot .sub{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+canvas#pressCv{width:100%;height:200px;background:#0a0c10;border-radius:8px;display:block}
 /* monitor */
 .monfoot .comps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.monfoot .comps{grid-template-columns:1fr}}
@@ -131,20 +138,42 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
     </div>
   </section>
 
+  <section class="panel full" id="pressPanel">
+    <h2>Pressure <span class="tag">raw force from each shoe's sensor (0-4095), every packet, last 10 s. Not tied to steps.</span></h2>
+    <div class="pressTop">
+      <div class="pressFoot" id="pressL">
+        <span style="color:var(--L);font-weight:700;width:44px">Left</span>
+        <span class="big" id="pressNL">-</span>
+        <div class="bar"><i id="pressBarL" style="--c:var(--L)"></i></div>
+        <span class="lamp" id="pressDownL" title="foot down (the shoe's step detector)"></span>
+        <span class="sub" id="pressSubL">not connected</span>
+      </div>
+      <div class="pressFoot" id="pressR">
+        <span style="color:var(--R);font-weight:700;width:44px">Right</span>
+        <span class="big" id="pressNR">-</span>
+        <div class="bar"><i id="pressBarR" style="--c:var(--R)"></i></div>
+        <span class="lamp" id="pressDownR" title="foot down (the shoe's step detector)"></span>
+        <span class="sub" id="pressSubR">not connected</span>
+      </div>
+    </div>
+    <canvas id="pressCv"></canvas>
+    <p class="help" style="margin:6px 0 0">The number and the trace are the sensor reading as it arrives (25 times a second), so light and hard presses and how long you hold them all show. Shaded = the shoe counts the foot as down; a tick on the top edge = a counted step. Under each number: the time between the last two counted presses of that foot, and the step count.</p>
+  </section>
+
   <section class="panel full" id="ratePanel">
     <h2>Step rate <span class="tag">from the pressure sensors, last 30 s. Drag the red run line (or use the slider) to set where running starts.</span></h2>
     <div class="rateTop">
       <span class="badge big s0" id="rateState">STILL</span>
       <div class="rateNums">
-        <span><i style="display:inline-block;width:12px;height:3px;background:var(--L);vertical-align:middle"></i> left <b id="rateL">0</b></span>
-        <span><i style="display:inline-block;width:12px;height:3px;background:var(--R);vertical-align:middle"></i> right <b id="rateR">0</b></span>
+        <span><i style="display:inline-block;width:12px;height:3px;background:var(--L);vertical-align:middle"></i> left pressure <b id="ratePL">-</b> &middot; <b id="rateL">0</b>/min</span>
+        <span><i style="display:inline-block;width:12px;height:3px;background:var(--R);vertical-align:middle"></i> right pressure <b id="ratePR">-</b> &middot; <b id="rateR">0</b>/min</span>
         <span><i style="display:inline-block;width:12px;height:3px;background:#fff;vertical-align:middle"></i> both feet <b id="rateB">0</b> steps/min</span>
       </div>
       <div class="rateCtl">Run from <input type="range" id="runSpm" min="100" max="220" step="1"> <b id="runSpmN" style="color:var(--text);min-width:30px"></b> steps/min
         <button class="small" id="runSpmReset" title="back to 150">Reset</button></div>
     </div>
     <canvas id="rateCv"></canvas>
-    <p class="help" style="margin:6px 0 0">Steps per minute counting both feet (people walk at about 100-120 and run at 150-180). Left and right are each foot's own rate &times; 2, so all three lines use the same scale. With one shoe connected, its line decides. Under <span style="color:var(--walk)">walk</span> it's still, above the red line it's running (and it has to drop <span id="runHyst"></span> under the line to go back to walking).</p>
+    <p class="help" style="margin:6px 0 0">Small ticks under the lines are the steps each shoe counted (one per press of its pressure sensor, left above, right below). The rate needs 2 steps of a foot within 2 s, so a single press shows a tick but no line yet. Steps per minute counting both feet (people walk at about 100-120 and run at 150-180). Left and right are each foot's own rate &times; 2, so all three lines use the same scale. With one shoe connected, its line decides. Under <span style="color:var(--walk)">walk</span> it's still, above the red line it's running (and it has to drop <span id="runHyst"></span> under the line to go back to walking).</p>
   </section>
 
   <section class="panel full" id="slotsPanel">
@@ -262,6 +291,10 @@ function ingest(id, d, src, rawLine){
   const fd = det.feet[id];
   if (fd.d && ((d.events - fd.events + 256) % 256)) logEvent(id, `${FOOT_NAME[id]} shoe says: ${EVENT_NAMES[d.event] || d.event}`);
   if (fd.d && ((d.spins - fd.spins + 256) % 256)) logEvent(id, `${FOOT_NAME[id]} shoe says: 360 SPIN`);
+  if (fd.d && det.isLive(id, now) && ((d.steps - fd.steps + 65536) % 65536)){
+    stepMarks.push({t:now, id});
+    logEvent(id, `${FOOT_NAME[id]} step #${d.steps} (pressure ${d.fsr}` + (d.stepMs ? `, ${d.stepMs} ms after this foot's last step = ${Math.round(120000 / d.stepMs)} steps/min on the graph)` : ', first step after a pause)'));
+  }
   det.ingest(id, d, now);
 }
 
@@ -473,6 +506,7 @@ function buildPlay(){
       <h2><span class="dot" id="pdot${id}"></span> ${FOOT_NAME[id]} shoe <span class="tag" id="plink${id}">not connected</span></h2>
       <div class="footrow"><span class="badge big" id="pstate${id}">-</span><span class="badge" id="ppose${id}" style="background:#3a404d;color:var(--text)">-</span></div>
       <div class="kv" style="margin-top:8px">
+        <span>Pressure (raw, 0-4095)</span><b><span class="bar" style="display:inline-block;width:90px;vertical-align:middle;margin-right:6px"><i id="pfsrBar${id}" style="--c:var(--${id})"></i></span><span id="pfsr${id}">-</span></b>
         <span>Foot down</span><b><span class="lamp" id="pdown${id}"></span></b>
         <span>Tilt (pitch / roll)</span><b id="ptilt${id}">-</b>
         <span>Last one-foot event</span><b id="pev${id}">-</b>
@@ -527,6 +561,8 @@ function drawPlay(){
     $('plink'+id).textContent = live ? `${f.src}, ${f.rate}/s` : (f.lastLive ? 'stopped sending' : 'not connected');
     const pb = $('pstate'+id); pb.textContent = live ? (GAIT_NAMES[d.state] || '?') : '-'; pb.className = 'badge big' + (live ? ' s' + d.state : '');
     $('ppose'+id).textContent = live ? (POSE_NAMES[d.pose] || '?') : '-';
+    $('pfsr'+id).textContent = live ? d.fsr : '-';
+    $('pfsrBar'+id).style.width = (live ? clamp(d.fsr / 4095, 0, 1) * 100 : 0) + '%';
     $('pdown'+id).className = 'lamp' + (live && (d.flags & 2) ? ' on' : '');
     $('ptilt'+id).textContent = live ? `${d.pitch}° / ${d.roll}°` : '-';
     $('pev'+id).textContent = live && d.events ? `${EVENT_NAMES[d.event] || d.event} (#${d.events})` : '-';
@@ -826,9 +862,44 @@ async function sendCmd(text){
   for (const u of targets){ try{ await u.writer.write(text + '\n'); }catch(e){ logApp('could not send: ' + e.message); } }
 }
 
+// ===================== raw pressure =====================
+const PRESS_MS = 10000;
+function drawPressure(now){
+  for (const id of ['L','R']){
+    const f = feet[id], d = f.d, live = isLive(f, now);
+    $('pressN'+id).textContent = live ? d.fsr : '-';
+    $('rateP'+id).textContent = live ? d.fsr : '-';
+    $('pressBar'+id).style.width = (live ? clamp(d.fsr / 4095, 0, 1) * 100 : 0) + '%';
+    $('pressDown'+id).className = 'lamp' + (live && (d.flags & 2) ? ' on' : '');
+    $('pressSub'+id).textContent = !live ? (f.lastLive ? 'stopped sending' : 'not connected')
+      : `${d.stepMs ? d.stepMs + ' ms between presses' : 'no press interval yet'} · ${d.steps} steps`;
+  }
+  const cv = $('pressCv'), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const L = 40, top = 8, bot = h - 16;
+  const x = t => L + (1 - (now - t) / PRESS_MS) * (w - L - 6), y = v => bot - clamp(v / 4095, 0, 1) * (bot - top);
+  c.font = '11px system-ui'; c.textBaseline = 'middle'; c.textAlign = 'right';
+  for (let v = 0; v <= 4000; v += 1000){ c.strokeStyle = '#1d212a'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, y(v)); c.lineTo(w, y(v)); c.stroke(); c.fillStyle = '#5b6273'; c.fillText(v, L - 6, y(v)); }
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  for (let s = 10; s >= 0; s -= 2) c.fillText(s ? `-${s}s` : 'now', Math.min(x(now - s*1000) - (s ? 10 : 22), w - 26), h - 3);
+  for (const id of ['L','R']){
+    const hist = feet[id].hist.filter(p => p.t >= now - PRESS_MS), col = id === 'L' ? '#3fd0c0' : '#f5a54a';
+    c.fillStyle = id === 'L' ? 'rgba(63,208,192,.07)' : 'rgba(245,165,74,.07)';
+    for (let i = 1; i < hist.length; i++) if (hist[i].down) c.fillRect(x(hist[i-1].t), top, x(hist[i].t) - x(hist[i-1].t) + 0.5, bot - top);
+    c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath();
+    hist.forEach((p, i) => (i && p.t - hist[i-1].t < 300) ? c.lineTo(x(p.t), y(p.fsr)) : c.moveTo(x(p.t), y(p.fsr)));
+    c.stroke();
+    c.fillStyle = col;
+    for (const m of stepMarks) if (m.id === id && m.t >= now - PRESS_MS) c.fillRect(x(m.t) - 1, id === 'L' ? top : top + 7, 2, 6);
+  }
+}
+
 // ===================== step-rate graph =====================
 const RATE_MS = 30000, RATE_TOP = 240, RUN_DEFAULT = Moves.TUNING.RUN_SPM;
 const rateHist = [];   // {t, L, R, both, run, g} every 100 ms
+const stepMarks = [];  // {t, id} every step a shoe counted
 function setRunSpm(v, keep = true){
   v = Math.round(clamp(v, 100, 220));
   det.T.RUN_SPM = v; $('runSpm').value = v; $('runSpmN').textContent = v;
@@ -838,6 +909,7 @@ function sampleRates(){
   const now = performance.now(), r = det.rates(now), g = det.gait(now);
   rateHist.push({t:now, L:r.live.L ? r.L : null, R:r.live.R ? r.R : null, both:(r.live.L || r.live.R) ? r.both : null, run:det.T.RUN_SPM, g});
   while (rateHist.length && rateHist[0].t < now - RATE_MS) rateHist.shift();
+  while (stepMarks.length && stepMarks[0].t < now - RATE_MS) stepMarks.shift();
   $('rateL').textContent = r.live.L ? Math.round(r.L) : '-';
   $('rateR').textContent = r.live.R ? Math.round(r.R) : '-';
   $('rateB').textContent = (r.live.L || r.live.R) ? Math.round(r.both) : '-';
@@ -873,6 +945,8 @@ function drawRates(now){
   // state strip along the bottom
   for (let i = 1; i < rateHist.length; i++){ const a = rateHist[i-1], b = rateHist[i];
     c.fillStyle = {still:'#6b7280', walk:'#4cc38a', run:'#f5554a'}[b.g]; c.fillRect(x(a.t), h - 16, x(b.t) - x(a.t) + 0.5, 3); }
+  // a tick for every counted step: left on the upper row, right on the lower
+  for (const m of stepMarks){ c.fillStyle = m.id === 'L' ? '#3fd0c0' : '#f5a54a'; c.fillRect(x(m.t) - 1, m.id === 'L' ? h - 30 : h - 24, 2, 6); }
   // the three rate lines
   for (const [k, col, wid] of [['L', '#3fd0c0', 1.6], ['R', '#f5a54a', 1.6], ['both', '#ffffff', 2.4]]){
     c.strokeStyle = col; c.lineWidth = wid; c.beginPath(); let pen = false;
@@ -914,7 +988,7 @@ setInterval(() => {
 }, 25);
 setInterval(drawMonitor, 100);
 setInterval(sampleRates, 100);
-(function frame(){ drawPlay(); requestAnimationFrame(frame); })();
+(function frame(){ drawPlay(); if (tab === 'play') drawPressure(performance.now()); requestAnimationFrame(frame); })();
 window.shoeApp = {feet, det, rateHist, setRunSpm, ingest, decodePacket, parseCsv, slots, slotForFileName, get playing(){ return playing && playing.key; }, get started(){ return started; }};
 </script>
 </body>

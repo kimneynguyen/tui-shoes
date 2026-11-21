@@ -64,16 +64,26 @@ public:
   uint32_t upSinceMs = 0;     // when the foot last lifted (0 = never)
   uint16_t lastAirMs = 0;     // how long the foot was up before the last counted step
   float peak = 0;             // learned "full press" level
+  float rest = 0;             // learned "foot up" level (an insole or a resting finger can keep it above 0)
   float pressAt = FSR_MIN_PRESS, releaseAt = FSR_MIN_PRESS * 0.6f;
 
   void beginSample() { stepped = false; }
 
   void updateFsr(uint32_t now, uint16_t fsr) {
-    // learn the press level: jump up to new highs, slowly forget old ones (~30 s)
-    peak = (fsr > peak) ? fsr : peak * 0.9998f;
-    pressAt = fmaxf(FSR_MIN_PRESS, FSR_PRESS_FRAC * peak);
-    releaseAt = fmaxf(FSR_MIN_PRESS * 0.6f, FSR_RELEASE_FRAC * peak);
-    touching = fsr > FSR_MIN_PRESS;
+    float dt = lastFsrMs ? (float)(now - lastFsrMs) : 10.0f;
+    lastFsrMs = now;
+    // full press: jump up to new highs, forget old ones (half gone after FSR_PEAK_HALF_MS)
+    peak = fmaxf((float)fsr, peak * powf(0.5f, dt / FSR_PEAK_HALF_MS));
+    // foot up level: drops to any lower reading, and slowly rises to what the sensor reads
+    // with the foot up. While down it can only rise to half the reading, so standing stays "down".
+    float restTarget = down ? fsr * 0.5f : fsr;
+    if (fsr < rest) rest = fsr;
+    else if (restTarget > rest) rest += (restTarget - rest) * fminf(1.0f, dt / FSR_REST_RISE_MS);
+    // press and release are measured from the rest level, so a preloaded sensor still steps
+    float span = fmaxf(peak - rest, (float)FSR_MIN_SPAN);
+    pressAt = fmaxf(FSR_MIN_PRESS, rest + FSR_PRESS_FRAC * span);
+    releaseAt = fmaxf(FSR_MIN_PRESS * 0.6f, rest + FSR_RELEASE_FRAC * span);
+    touching = fsr > fmaxf(FSR_MIN_PRESS, rest + FSR_MIN_PRESS);
     if (!down && fsr > pressAt) press(now);
     else if (down && fsr < releaseAt) lift(now);
   }
@@ -89,6 +99,7 @@ public:
 
 private:
   uint16_t prevInterval = 0;
+  uint32_t lastFsrMs = 0;
 
   void press(uint32_t now) {
     down = true;

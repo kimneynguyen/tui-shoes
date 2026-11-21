@@ -33,11 +33,15 @@
 #define MPU_ADDR    0x68       // 0x69 if the GY-521 AD0 pin is wired to VCC
 
 // ---------- Pressure sensor (0..4095, FSR from 3.3 V with 10k to GND) ----------
-// The shoe learns how hard this person presses. "Foot down" is when pressure
-// goes above FSR_PRESS_FRAC of that, and "foot up" is below FSR_RELEASE_FRAC.
+// The shoe learns how hard this person presses (peak) and what the sensor reads
+// with the foot up (rest). "Foot down" is above FSR_PRESS_FRAC of the way from
+// rest to peak, and "foot up" is below FSR_RELEASE_FRAC. Key 1 shows both lines.
 #define FSR_MIN_PRESS     150  // anything below this is never "foot down" (noise)
 #define FSR_PRESS_FRAC    0.40f
 #define FSR_RELEASE_FRAC  0.20f
+#define FSR_MIN_SPAN      400  // rest to peak is taken as at least this, so noise is never a step
+#define FSR_PEAK_HALF_MS  3000 // one hard squeeze is half forgotten after this (lighter steps count again)
+#define FSR_REST_RISE_MS  2000 // how fast the rest level follows a sensor that stays pressed with the foot up
 
 // ---------- Steps from the gyro board (only when STEPS_FROM_FSR is 0) ----------
 #define ACCEL_STEP_G      1.6f // a hit harder than this (in g) is a step
