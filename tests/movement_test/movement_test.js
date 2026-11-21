@@ -69,6 +69,53 @@ console.log('Running (down 250 ms, up 450 ms: both feet in the air for a moment)
   });
   check(s.now() === 'run', 'RUN'); check(noQuick(s), 'running flight is not a jump or hop'); }
 
+// both feet taking turns; perFootMs = time between two steps of the same foot
+const stepping = (s, perFootMs, ms) => s.run(ms, t => {
+  for (const [id, off] of [['L', 0], ['R', perFootMs / 2]]){
+    const p = (t + perFootMs - off) % perFootMs, f = s[id];
+    if (p === Math.round(perFootMs * 0.55 / 10) * 10) f.lift(t); if (p === 0) f.land(t);
+    if (f.steps >= 2) f.state = 1;
+  }
+});
+const switchTime = (s, key, fn) => { const start = s.t; let at = null;
+  s.run(6000, t => { fn(t); if (at === null && s.det.current.key === key) at = t; }); return at === null ? null : at - start; };
+
+console.log('Step rate (steps per minute, both feet)');
+{ const s = new Scene(); stepping(s, 1100, 5000); const r = s.det.rates(s.t);
+  console.log(`        walking 1100 ms per foot: both=${r.both.toFixed(0)} L=${r.L.toFixed(0)} R=${r.R.toFixed(0)}`);
+  check(Math.abs(r.both - 109) < 6 && Math.abs(r.L - 109) < 10, 'walking ~109 steps/min'); check(s.now() === 'walk', 'that is WALK at the default 150'); }
+{ const s = new Scene(); stepping(s, 760, 5000); const r = s.det.rates(s.t);
+  console.log(`        760 ms per foot: both=${r.both.toFixed(0)}`);
+  check(s.now() === 'run', '158 steps/min is RUN'); }
+{ const s = new Scene(); stepping(s, 1100, 3000); s.det.T.RUN_SPM = 100; s.run(500);
+  check(s.now() === 'run', 'moving the run line down to 100 makes the same walking RUN, right away'); }
+{ const s = new Scene(); const keep = ms => stepping(s, 900, ms); keep(5000);
+  console.log(`        900 ms per foot: both=${s.det.rates(s.t).both.toFixed(0)}`);
+  check(s.now() === 'walk', '133 steps/min = WALK');
+  s.det.T.RUN_SPM = 125; keep(400); check(s.now() === 'run', 'line at 125: RUN');
+  s.det.T.RUN_SPM = 140; keep(1500); check(s.now() === 'run', 'line at 140 (133 is within the 10 hysteresis): stays RUN');
+  s.det.T.RUN_SPM = 150; keep(400); check(s.now() === 'walk', 'line at 150: back to WALK'); }
+for (const [per, want] of [[1100, 'walk'], [700, 'run']]){
+  const s = new Scene('L'); stepping(s, per, 5000); const r = s.det.rates(s.t);
+  console.log(`        left shoe only, ${per} ms per foot: used=${r.used.toFixed(0)}`);
+  check(s.now() === want, `one shoe only: its own rate x 2 decides (${want.toUpperCase()})`); }
+{ const s = new Scene(); const t0 = s.t;
+  s.run(1500, t => { if (t === t0 + 100) { s.L.lift(t); s.R.lift(t); } if (t === t0 + 420) { s.L.land(t); s.R.land(t); } });
+  check(s.det.rates(s.t).both < 60, 'a jump (both feet landing together) does not look like fast steps'); }
+{ const s = new Scene(); stepping(s, 1100, 5000);
+  let cyc = 0; const ms = switchTime(s, 'run', t => { cyc += 10; const p = cyc % 700, q = (cyc + 350) % 700;
+    if (p === 380) s.L.lift(t); if (p === 0) s.L.land(t); if (q === 380) s.R.lift(t); if (q === 0) s.R.land(t); });
+  console.log(`        walk (109/min) -> run (171/min): RUN after ${ms} ms`);
+  check(ms !== null && ms < 1600, 'walk to run switches within ~1.5 s');
+  const back = switchTime(s, 'walk', t => { cyc += 10; const p = cyc % 1100, q = (cyc + 550) % 1100;
+    if (p === 600) s.L.lift(t); if (p === 0) s.L.land(t); if (q === 600) s.R.lift(t); if (q === 0) s.R.land(t); });
+  console.log(`        run -> walk: WALK after ${back} ms`);
+  check(back !== null && back < 2500, 'run to walk switches within ~2.5 s');
+  s.L.land(s.t); s.R.land(s.t);
+  const stop = switchTime(s, 'still', () => {});
+  console.log(`        walk -> stop: STILL ${stop} ms after the last step`);
+  check(stop !== null && stop <= 3200, 'stopping: STILL within ~3 s'); }
+
 console.log('Jump with both feet');
 { const s = new Scene();
   const t0 = s.t;

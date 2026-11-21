@@ -36,6 +36,10 @@ Every slot starts **empty**. Drop an audio file on a slot, click **Choose**, or 
 
 ![Monitor window](docs/monitor.png)
 
+**The step-rate graph** (Play view): steps per minute from each shoe's pressure sensor over the last 30 s, walking, then running, then walking again:
+
+![Step-rate graph](docs/walk-run-graph.png)
+
 **The real left-shoe build** in its 3D-printed tent case: the XIAO ESP32-C6 (small black board) and the MPU-6050 gyro (purple board, red light) on the breadboard, with the Arduino UNO R4 Minima underneath. (That was the old two-board build. Each shoe now uses only the XIAO.)
 
 ![Breadboard build, view 1](docs/breadboard-1.jpg)
@@ -112,6 +116,14 @@ python3 -m http.server 8000
 ```
 Then go to `http://localhost:8000` in Chrome. Press **Start sound**, then **Connect Left shoe** (`MusicShoe-L`) and **Connect Right shoe** (`MusicShoe-R`).
 
+### The step-rate graph: setting walk vs run
+
+The **Step rate** panel draws steps per minute over the last 30 s: left (teal), right (orange) and both feet together (white). Left and right are each foot's own rate times 2, so all three use the same scale (people walk at about 100-120 steps/min and run at 150-180). The green dashed line is the slowest walk (40/min), the red line is where running starts. The badge shows STILL / WALK / RUN now, and the strip along the bottom shows it over time.
+
+**Drag the red line** up or down (or use the **Run from** slider) to set where running starts. It works right away and is saved in this browser; **Reset** puts it back to 150. To go back to walking the rate has to drop 10 below the line, so it doesn't flicker when you're right on it.
+
+How the rate is worked out: with both shoes, from the last 4 steps of either foot (3 gaps); with one shoe, from that shoe's last 3 steps (2 gaps), times 2. If the next step is late the rate drops, and after 2 s with no step it's 0. Both feet landing together (a jump) counts as one step. Expect RUN about 1.5 s after you speed up, WALK under 1 s after you slow down, and STILL about 2 s after the last step.
+
 No shoes yet? Click **Test** on any slot to pretend that movement happened. With `DEMO_MODE 1` in `config.h`, a shoe with no sensors makes up still, walk, run, spin, each pose and each one-foot event, 3 seconds each.
 
 ## Adding your sounds
@@ -136,7 +148,7 @@ Each shoe works out what **it** can see by itself (100 times a second) and sends
 |---|---|---|---|
 | 1 | Standing still | app | Nothing else is happening (the default). Silence unless you give it a sound |
 | 2 | Walking | shoe + app | Each shoe counts steps (as before). With both shoes, the feet must take turns: `TURNS_NEEDED` left-right switches in `TURN_WINDOW_MS`, each `TURN_MIN_MS`-`TURN_MAX_MS` apart. With one shoe, 2+ steps of that shoe |
-| 3 | Running | shoe + app | Walking, and a shoe's steps are faster than `RUN_STEP_MS` apart |
+| 3 | Running | app | Walking, and the step rate is at or above `RUN_SPM` steps/min (both feet counted, default 150). Set it live on the **Step rate** graph |
 | 4 | Spin | shoe | 360° of turning around the up/down line within `SPIN_WINDOW_MS` (as before). Both feet spinning together = one spin |
 | 5 | Jump | app | Both feet land within `JUMP_LAND_TOGETHER_MS` of each other, after both were in the air together for `JUMP_MIN_AIR_MS`-`JUMP_MAX_AIR_MS` |
 | 6 | Hop | app | One foot lands after `HOP_MIN_AIR_MS`-`HOP_MAX_AIR_MS` in the air, and the other foot was up the whole time (lifted before the hop took off) and is still up. Waits `JUMP_LAND_TOGETHER_MS` first, in case it's a jump |
@@ -237,8 +249,8 @@ One-foot numbers are in **`xiao_foot/config.h`** (upload again after changing th
 
 | If... | Change |
 |---|---|
-| Fast walking counts as running | Lower `RUN_STEP_MS` (time between steps of one foot; walking is ~1000-1200, running ~600-750) |
-| Running isn't detected | Raise `RUN_STEP_MS` |
+| Fast walking counts as running | Drag the red line on the **Step rate** graph up (or `RUN_SPM` in the app's `TUNING`). The shoe's own `RUN_STEP_MS` only affects what key `5` and the Monitor show |
+| Running isn't detected | Drag the red line down. Kids and short legs step faster, so they may need 160-170 |
 | Steps are missed, or extra steps appear | Watch key `1`. Raise or lower `FSR_PRESS_FRAC` / `FSR_MIN_PRESS` |
 | Spins don't count | Watch key `4`. Lower `SPIN_RATE_DPS` or `SPIN_DEG` |
 | Turning around counts as a spin | Raise `SPIN_DEG` (keep it above 270) |

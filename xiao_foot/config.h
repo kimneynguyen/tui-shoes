@@ -49,7 +49,7 @@
 // ---------- Walk / run / still ----------
 // One shoe only sees its own steps, so these are times between steps of the
 // SAME foot. Walking is about 1000-1200 ms, running about 600-750 ms.
-#define RUN_STEP_MS       800  // faster than this = running
+#define RUN_STEP_MS       800  // faster than this = running (the shoe's own guess; the app decides by RUN_SPM, see the step-rate graph)
 #define RUN_HYST_MS       100  // must slow to RUN_STEP_MS + this to go back to walking
 #define RUN_HOLD_MS       1100 // no step for this long = not running anymore
 #define STILL_MS          2000 // no step for this long = still (sound pauses)

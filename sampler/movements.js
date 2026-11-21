@@ -23,6 +23,13 @@ const TUNING = {
   TURNS_NEEDED: 2,              // ...this many = walking (running if a shoe says RUN)
   STOP_MS: 2000,                // no step for this long = not walking any more
 
+  // Walking vs running, by step rate in steps per minute, both feet counted
+  // (a person walks at ~100-120, runs at ~150-180). With one shoe, that foot's rate x 2.
+  RUN_SPM: 150,                 // this fast or faster = running (the graph's slider changes it)
+  RUN_HYST_SPM: 10,             // must drop this far under RUN_SPM to go back to walking
+  RATE_STEPS: 4,                // the both-feet rate uses the last this many steps (3 gaps)
+  WALK_MIN_SPM: 40,             // slowest rate that still counts as walking (= TURN_MAX_MS 1500)
+
   SPIN_TOGETHER_MS: 1200,       // both feet spinning this close together = one spin
 
   EVENT_HOLD_MS: 900,           // a quick move (spin, jump, hop, kick, lunge, stomp, toe tap) stays "now" this long
@@ -67,7 +74,7 @@ const TUNING = {
 const MOVES = [
   {key:'still',   n:1,  name:'Standing still', kind:'state', feet:1, how:'No other movement. Sound loops while you stand.'},
   {key:'walk',    n:2,  name:'Walking',        kind:'state', feet:1, how:'Left and right steps taking turns.'},
-  {key:'run',     n:3,  name:'Running',        kind:'state', feet:1, how:'Fast steps (a shoe says RUN).'},
+  {key:'run',     n:3,  name:'Running',        kind:'state', feet:1, how:'Steps at or above the run line on the step-rate graph.'},
   {key:'spin',    n:4,  name:'Spin',           kind:'event', feet:1, how:'A full 360 turn, one or both feet.'},
   {key:'jump',    n:5,  name:'Jump (both feet)', kind:'event', feet:2, how:'Both feet leave the ground and land together.'},
   {key:'hop',     n:6,  name:'Hop on one foot', kind:'event', feet:2, how:'One foot lands while the other stays up.'},
@@ -110,6 +117,8 @@ class MovementDetector {
   reset(){
     this.feet = {L:newFoot('L'), R:newFoot('R')};
     this.lastStep = null; this.turns = [];
+    this.stepTimes = {L:[], R:[], both:[]};
+    this.running = false;
     this.seq = 0;
     this.current = {key:'still', why:'start', since:0, isEvent:false, id:0};
     this.eventUntil = -1e9;
@@ -151,6 +160,7 @@ class MovementDetector {
 
   // ---------- a foot pressed down (a step or a landing) ----------
   _landing(id, now, air){
+    this._recordStepTime(id, now);
     this._recordTurn(id, now);
     const T = this.T, f = this.feet[id], o = this.feet[OTHER[id]];
     f.lastLand = {t:now, air, used:false};
@@ -257,15 +267,48 @@ class MovementDetector {
   usingTurns(now){ return this.requireTurns && this.bothLive(now); }
   footGait(id, now){ return this.isLive(id, now) ? this.feet[id].state : STILL; }
 
+  // ---------- step rate (steps per minute), from the pressure sensors' steps ----------
+  _recordStepTime(id, t){
+    const T = this.T, add = (list, max) => {
+      if (list.length && t - list[list.length - 1] > T.STOP_MS) list.length = 0;   // a pause starts fresh
+      list.push(t);
+      while (list.length > max) list.shift();
+    };
+    add(this.stepTimes[id], 3);   // like the shoe: the average of this foot's last two gaps
+    const both = this.stepTimes.both;
+    // both feet landing together (a jump) is one step for the rate, not two
+    if (!(both.length && t - both[both.length - 1] < T.TURN_MIN_MS)) add(both, T.RATE_STEPS);
+  }
+
+  // Rate from a list of step times. It falls when the next step is late, and is 0 after STOP_MS.
+  _rate(times, now){
+    const n = times.length;
+    if (n < 2) return 0;
+    const since = now - times[n - 1];
+    if (since > this.T.STOP_MS) return 0;
+    const gap = (times[n - 1] - times[0]) / (n - 1);
+    return 60000 / Math.max(gap, since);
+  }
+
+  // L and R: each foot's own rate x 2 (so they're on the same scale as both feet together).
+  // both: all steps of both feet. used: the number walk/run is decided on.
+  rates(now){
+    const live = {L:this.isLive('L', now), R:this.isLive('R', now)};
+    const L = live.L ? 2 * this._rate(this.stepTimes.L, now) : 0;
+    const R = live.R ? 2 * this._rate(this.stepTimes.R, now) : 0;
+    const both = live.L && live.R ? this._rate(this.stepTimes.both, now) : (live.L ? L : R);
+    return {L, R, both, used:both, live};
+  }
+  runFrom(){ return this.running ? this.T.RUN_SPM - this.T.RUN_HYST_SPM : this.T.RUN_SPM; }
+
   gait(now){
     const s = ['L','R'].map(id => this.footGait(id, now));
-    if (this.usingTurns(now)){
-      if (!this.takingTurns(now)) return 'still';
-      return s.includes(RUN) ? 'run' : 'walk';
-    }
-    if (s.includes(RUN)) return 'run';
-    if (s.includes(WALK)) return 'walk';
-    return 'still';
+    let moving;
+    if (this.usingTurns(now)) moving = this.takingTurns(now);
+    else moving = s.includes(WALK) || s.includes(RUN);
+    if (!moving){ this.running = false; return 'still'; }
+    this.running = this.rates(now).used >= this.runFrom();
+    return this.running ? 'run' : 'walk';
   }
 
   // ---------- lasting movements, most important first ----------
@@ -283,8 +326,8 @@ class MovementDetector {
     if (now < this.skipUntil) return ['skip', this.skipWhy];
     if (now < this.shuffleUntil) return ['shuffle', this.shuffleWhy];
     const g = this.gait(now);
-    if (g === 'run') return ['run', 'fast steps'];
-    if (g === 'walk') return ['walk', this.usingTurns(now) ? `feet taking turns (${this.recentTurns(now)} in 3 s)` : 'steps'];
+    if (g === 'run') return ['run', `fast steps (${Math.round(this.rates(now).used)} steps/min, running from ${this.T.RUN_SPM})`];
+    if (g === 'walk') return ['walk', `${Math.round(this.rates(now).used)} steps/min` + (this.usingTurns(now) ? `, feet taking turns (${this.recentTurns(now)} in 3 s)` : '')];
     for (const f of [L, R]){
       if (!this.isLive(f.id, now)) continue;
       const tilted = f.pose === POSE_TIPTOE || f.pose === POSE_HEEL || f.pose === POSE_SIDE;

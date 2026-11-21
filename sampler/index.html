@@ -77,6 +77,14 @@ h3{margin:0 0 6px;font-size:12px;color:var(--mute);text-transform:uppercase;lett
 .kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
 .kv b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 label.chk{display:block;margin:8px 0}
+/* step-rate graph */
+.rateTop{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.rateTop .badge{min-width:64px;text-align:center}
+.rateNums{display:flex;gap:14px;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.rateNums b{color:var(--text);font-weight:650}
+.rateCtl{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--mute)}
+.rateCtl input[type=range]{width:170px}
+canvas#rateCv{width:100%;height:230px;background:#0a0c10;border-radius:8px;display:block;touch-action:none}
 /* monitor */
 .monfoot .comps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.monfoot .comps{grid-template-columns:1fr}}
@@ -121,6 +129,22 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
       <div id="nowSound" style="font-weight:650">-</div>
       <div class="row" style="grid-template-columns:70px 1fr 48px;margin-top:8px"><span class="help">Volume</span><input type="range" id="masterVol" min="0" max="100"><span class="num" id="masterVolN"></span></div>
     </div>
+  </section>
+
+  <section class="panel full" id="ratePanel">
+    <h2>Step rate <span class="tag">from the pressure sensors, last 30 s. Drag the red run line (or use the slider) to set where running starts.</span></h2>
+    <div class="rateTop">
+      <span class="badge big s0" id="rateState">STILL</span>
+      <div class="rateNums">
+        <span><i style="display:inline-block;width:12px;height:3px;background:var(--L);vertical-align:middle"></i> left <b id="rateL">0</b></span>
+        <span><i style="display:inline-block;width:12px;height:3px;background:var(--R);vertical-align:middle"></i> right <b id="rateR">0</b></span>
+        <span><i style="display:inline-block;width:12px;height:3px;background:#fff;vertical-align:middle"></i> both feet <b id="rateB">0</b> steps/min</span>
+      </div>
+      <div class="rateCtl">Run from <input type="range" id="runSpm" min="100" max="220" step="1"> <b id="runSpmN" style="color:var(--text);min-width:30px"></b> steps/min
+        <button class="small" id="runSpmReset" title="back to 150">Reset</button></div>
+    </div>
+    <canvas id="rateCv"></canvas>
+    <p class="help" style="margin:6px 0 0">Steps per minute counting both feet (people walk at about 100-120 and run at 150-180). Left and right are each foot's own rate &times; 2, so all three lines use the same scale. With one shoe connected, its line decides. Under <span style="color:var(--walk)">walk</span> it's still, above the red line it's running (and it has to drop <span id="runHyst"></span> under the line to go back to walking).</p>
   </section>
 
   <section class="panel full" id="slotsPanel">
@@ -802,6 +826,78 @@ async function sendCmd(text){
   for (const u of targets){ try{ await u.writer.write(text + '\n'); }catch(e){ logApp('could not send: ' + e.message); } }
 }
 
+// ===================== step-rate graph =====================
+const RATE_MS = 30000, RATE_TOP = 240, RUN_DEFAULT = Moves.TUNING.RUN_SPM;
+const rateHist = [];   // {t, L, R, both, run, g} every 100 ms
+function setRunSpm(v, keep = true){
+  v = Math.round(clamp(v, 100, 220));
+  det.T.RUN_SPM = v; $('runSpm').value = v; $('runSpmN').textContent = v;
+  if (keep) save('runSpm', v);
+}
+function sampleRates(){
+  const now = performance.now(), r = det.rates(now), g = det.gait(now);
+  rateHist.push({t:now, L:r.live.L ? r.L : null, R:r.live.R ? r.R : null, both:(r.live.L || r.live.R) ? r.both : null, run:det.T.RUN_SPM, g});
+  while (rateHist.length && rateHist[0].t < now - RATE_MS) rateHist.shift();
+  $('rateL').textContent = r.live.L ? Math.round(r.L) : '-';
+  $('rateR').textContent = r.live.R ? Math.round(r.R) : '-';
+  $('rateB').textContent = (r.live.L || r.live.R) ? Math.round(r.both) : '-';
+  const el = $('rateState'); el.textContent = g.toUpperCase(); el.className = 'badge big s' + ({still:0, walk:1, run:2}[g]);
+  drawRates(now);
+}
+const rateY = (v, h) => h - 18 - (Math.min(v, RATE_TOP) / RATE_TOP) * (h - 26);
+function drawRates(now){
+  const cv = $('rateCv'), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const L = 36, x = t => L + (1 - (now - t) / RATE_MS) * (w - L - 6);
+  const run = det.T.RUN_SPM, walk = Moves.TUNING.WALK_MIN_SPM;
+  // bands: still / walk / run
+  c.fillStyle = 'rgba(107,114,128,.10)'; c.fillRect(L, rateY(walk, h), w - L, rateY(0, h) - rateY(walk, h));
+  c.fillStyle = 'rgba(76,195,138,.08)';  c.fillRect(L, rateY(run, h), w - L, rateY(walk, h) - rateY(run, h));
+  c.fillStyle = 'rgba(245,85,74,.09)';   c.fillRect(L, rateY(RATE_TOP, h), w - L, rateY(run, h) - rateY(RATE_TOP, h));
+  c.font = '11px system-ui'; c.textBaseline = 'middle';
+  for (let v = 0; v <= RATE_TOP; v += 40){
+    const y = rateY(v, h); c.strokeStyle = '#1d212a'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, y); c.lineTo(w, y); c.stroke();
+    c.fillStyle = '#5b6273'; c.textAlign = 'right'; c.fillText(v, L - 6, y);
+  }
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillStyle = '#5b6273';
+  for (let s = 30; s >= 0; s -= 5) c.fillText(s ? `-${s}s` : 'now', Math.min(x(now - s*1000) - (s ? 10 : 22), w - 26), h - 4);
+  // threshold lines
+  const line = (v, col, dash, text, below) => { const y = rateY(v, h);
+    c.strokeStyle = col; c.lineWidth = dash ? 1 : 2; c.setLineDash(dash || []); c.beginPath(); c.moveTo(L, y); c.lineTo(w, y); c.stroke(); c.setLineDash([]);
+    c.fillStyle = col; c.font = '600 11px system-ui'; c.fillText(text, L + 6, below ? y + 13 : y - 5); };
+  line(walk, '#4cc38a', [4, 4], `walk from ${walk}`);
+  if (det.running) line(run - det.T.RUN_HYST_SPM, 'rgba(245,85,74,.5)', [2, 4], `back to walk under ${run - det.T.RUN_HYST_SPM}`, true);
+  line(run, rateDrag ? '#ff8a80' : '#f5554a', null, `run from ${run}  (drag me)`);
+  // state strip along the bottom
+  for (let i = 1; i < rateHist.length; i++){ const a = rateHist[i-1], b = rateHist[i];
+    c.fillStyle = {still:'#6b7280', walk:'#4cc38a', run:'#f5554a'}[b.g]; c.fillRect(x(a.t), h - 16, x(b.t) - x(a.t) + 0.5, 3); }
+  // the three rate lines
+  for (const [k, col, wid] of [['L', '#3fd0c0', 1.6], ['R', '#f5a54a', 1.6], ['both', '#ffffff', 2.4]]){
+    c.strokeStyle = col; c.lineWidth = wid; c.beginPath(); let pen = false;
+    for (const p of rateHist){ if (p[k] === null){ pen = false; continue; } const X = x(p.t), Y = rateY(p[k], h); pen ? c.lineTo(X, Y) : c.moveTo(X, Y); pen = true; }
+    c.stroke();
+  }
+}
+let rateDrag = false;
+function rateFromEvent(e){ const r = $('rateCv').getBoundingClientRect(), h = r.height, y = e.clientY - r.top;
+  return (h - 18 - y) / (h - 26) * RATE_TOP; }
+function buildRates(){
+  setRunSpm(load('runSpm', RUN_DEFAULT), false);
+  $('runHyst').textContent = det.T.RUN_HYST_SPM;
+  $('runSpm').oninput = e => setRunSpm(+e.target.value);
+  $('runSpmReset').onclick = () => setRunSpm(RUN_DEFAULT);
+  const cv = $('rateCv');
+  cv.addEventListener('pointerdown', e => { if (Math.abs(rateFromEvent(e) - det.T.RUN_SPM) < 14){ rateDrag = true; cv.setPointerCapture(e.pointerId); } });
+  cv.addEventListener('pointermove', e => {
+    if (rateDrag) setRunSpm(rateFromEvent(e));
+    else cv.style.cursor = Math.abs(rateFromEvent(e) - det.T.RUN_SPM) < 14 ? 'ns-resize' : 'default';
+  });
+  const end = () => { rateDrag = false; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+}
+
 // ===================== go =====================
 $('startBtn').onclick = start;
 $('bleL').onclick = () => connectBLE('L');
@@ -809,6 +905,7 @@ $('bleR').onclick = () => connectBLE('R');
 $('usbBtn').onclick = connectUSB;
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 buildPlay();
+buildRates();
 buildMonitor();
 loadSavedSounds();
 setInterval(() => {
@@ -816,8 +913,9 @@ setInterval(() => {
   if (cur.id !== playedId){ playedId = cur.id; playMovement(cur); }
 }, 25);
 setInterval(drawMonitor, 100);
+setInterval(sampleRates, 100);
 (function frame(){ drawPlay(); requestAnimationFrame(frame); })();
-window.shoeApp = {feet, det, ingest, decodePacket, parseCsv, slots, slotForFileName, get playing(){ return playing && playing.key; }, get started(){ return started; }};
+window.shoeApp = {feet, det, rateHist, setRunSpm, ingest, decodePacket, parseCsv, slots, slotForFileName, get playing(){ return playing && playing.key; }, get started(){ return started; }};
 </script>
 </body>
 </html>
