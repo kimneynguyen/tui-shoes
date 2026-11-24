@@ -90,7 +90,10 @@ canvas#rateCv{width:100%;height:230px;background:#0a0c10;border-radius:8px;displ
 .pressFoot{display:flex;align-items:center;gap:12px;background:#0f1217;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
 .pressFoot .big{font-size:30px;font-weight:750;font-variant-numeric:tabular-nums;min-width:78px;text-align:right}
 .pressFoot .bar{flex:1;height:16px}
-.pressFoot .sub{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+.pressFoot .sub{display:block;font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:2px}
+.pressFoot .pressRate{font-size:13px;color:var(--mute);white-space:nowrap}
+.pressFoot .pressRate b{font-size:20px;color:var(--text);font-variant-numeric:tabular-nums;display:inline-block;min-width:34px;text-align:right}
+.pressFoot .pressRate .badge{margin-left:4px;font-size:11px;padding:2px 8px}
 canvas#pressCv{width:100%;height:200px;background:#0a0c10;border-radius:8px;display:block}
 /* monitor */
 .monfoot .comps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -146,18 +149,20 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
         <span class="big" id="pressNL">-</span>
         <div class="bar"><i id="pressBarL" style="--c:var(--L)"></i></div>
         <span class="lamp" id="pressDownL" title="foot down (the shoe's step detector)"></span>
-        <span class="sub" id="pressSubL">not connected</span>
+        <span class="pressRate"><b id="pressSpmL">-</b> steps/min <span class="badge s0" id="pressZoneL">-</span>
+          <span class="sub" id="pressSubL">not connected</span></span>
       </div>
       <div class="pressFoot" id="pressR">
         <span style="color:var(--R);font-weight:700;width:44px">Right</span>
         <span class="big" id="pressNR">-</span>
         <div class="bar"><i id="pressBarR" style="--c:var(--R)"></i></div>
         <span class="lamp" id="pressDownR" title="foot down (the shoe's step detector)"></span>
-        <span class="sub" id="pressSubR">not connected</span>
+        <span class="pressRate"><b id="pressSpmR">-</b> steps/min <span class="badge s0" id="pressZoneR">-</span>
+          <span class="sub" id="pressSubR">not connected</span></span>
       </div>
     </div>
     <canvas id="pressCv"></canvas>
-    <p class="help" style="margin:6px 0 0">The number and the trace are the sensor reading as it arrives (25 times a second), so light and hard presses and how long you hold them all show. Shaded = the shoe counts the foot as down; a tick on the top edge = a counted step. Under each number: the time between the last two counted presses of that foot, and the step count.</p>
+    <p class="help" style="margin:6px 0 0">The number and the trace are the sensor reading as it arrives (25 times a second), so light and hard presses and how long you hold them all show. Shaded = the shoe counts the foot as down; a tick on the top edge = a counted step. Next to it: that foot's step rate, an average of its last 4 gaps between counted presses (leaving out the longest and shortest), times 2 so it's on the same scale as the lines on the step-rate graph. It holds steady between steps and only falls when the next step is clearly late. The label says where that number falls; the movement itself is decided on both feet together (see the badge on the step-rate graph).</p>
   </section>
 
   <section class="panel full" id="ratePanel">
@@ -293,7 +298,7 @@ function ingest(id, d, src, rawLine){
   if (fd.d && ((d.spins - fd.spins + 256) % 256)) logEvent(id, `${FOOT_NAME[id]} shoe says: 360 SPIN`);
   if (fd.d && det.isLive(id, now) && ((d.steps - fd.steps + 65536) % 65536)){
     stepMarks.push({t:now, id});
-    logEvent(id, `${FOOT_NAME[id]} step #${d.steps} (pressure ${d.fsr}` + (d.stepMs ? `, ${d.stepMs} ms after this foot's last step = ${Math.round(120000 / d.stepMs)} steps/min on the graph)` : ', first step after a pause)'));
+    logEvent(id, `${FOOT_NAME[id]} step #${d.steps} (pressure ${d.fsr}` + (d.stepMs ? `, ${d.stepMs} ms after this foot's last step)` : ', first step after a pause)'));
   }
   det.ingest(id, d, now);
 }
@@ -865,14 +870,18 @@ async function sendCmd(text){
 // ===================== raw pressure =====================
 const PRESS_MS = 10000;
 function drawPressure(now){
+  const r = det.rates(now);
   for (const id of ['L','R']){
     const f = feet[id], d = f.d, live = isLive(f, now);
     $('pressN'+id).textContent = live ? d.fsr : '-';
     $('rateP'+id).textContent = live ? d.fsr : '-';
     $('pressBar'+id).style.width = (live ? clamp(d.fsr / 4095, 0, 1) * 100 : 0) + '%';
     $('pressDown'+id).className = 'lamp' + (live && (d.flags & 2) ? ' on' : '');
+    const spm = live ? r[id] : 0, zone = det.rateZone(spm), T = det.T;
+    $('pressSpm'+id).textContent = live ? Math.round(spm) : '-';
+    const z = $('pressZone'+id); z.textContent = live ? zone.toUpperCase() : '-'; z.className = 'badge s' + (live ? {still:0, walk:1, run:2}[zone] : 0);
     $('pressSub'+id).textContent = !live ? (f.lastLive ? 'stopped sending' : 'not connected')
-      : `${d.stepMs ? d.stepMs + ' ms between presses' : 'no press interval yet'} · ${d.steps} steps`;
+      : `still under ${T.WALK_MIN_SPM} · walk ${T.WALK_MIN_SPM}-${T.RUN_SPM - 1} · run ${T.RUN_SPM}+ · ${d.steps} steps`;
   }
   const cv = $('pressCv'), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
   const dpr = window.devicePixelRatio || 1;

@@ -27,7 +27,9 @@ const TUNING = {
   // (a person walks at ~100-120, runs at ~150-180). With one shoe, that foot's rate x 2.
   RUN_SPM: 150,                 // this fast or faster = running (the graph's slider changes it)
   RUN_HYST_SPM: 10,             // must drop this far under RUN_SPM to go back to walking
-  RATE_STEPS: 4,                // the both-feet rate uses the last this many steps (3 gaps)
+  FOOT_RATE_GAPS: 4,            // each foot's rate averages its last this many gaps between steps
+  FOOT_STOP_MS: 3000,           // a foot's rate starts fresh after a gap this long (one missed step is shorter)
+  RATE_LATE: 1.5,               // the rate only starts falling once the next step is this many average gaps late
   WALK_MIN_SPM: 40,             // slowest rate that still counts as walking (= TURN_MAX_MS 1500)
 
   SPIN_TOGETHER_MS: 1200,       // both feet spinning this close together = one spin
@@ -117,7 +119,7 @@ class MovementDetector {
   reset(){
     this.feet = {L:newFoot('L'), R:newFoot('R')};
     this.lastStep = null; this.turns = [];
-    this.stepTimes = {L:[], R:[], both:[]};
+    this.stepTimes = {L:[], R:[]};
     this.running = false;
     this.seq = 0;
     this.current = {key:'still', why:'start', since:0, isEvent:false, id:0};
@@ -269,34 +271,37 @@ class MovementDetector {
 
   // ---------- step rate (steps per minute), from the pressure sensors' steps ----------
   _recordStepTime(id, t){
-    const T = this.T, add = (list, max) => {
-      if (list.length && t - list[list.length - 1] > T.STOP_MS) list.length = 0;   // a pause starts fresh
-      list.push(t);
-      while (list.length > max) list.shift();
-    };
-    add(this.stepTimes[id], 3);   // like the shoe: the average of this foot's last two gaps
-    const both = this.stepTimes.both;
-    // both feet landing together (a jump) is one step for the rate, not two
-    if (!(both.length && t - both[both.length - 1] < T.TURN_MIN_MS)) add(both, T.RATE_STEPS);
+    const list = this.stepTimes[id];
+    if (list.length && t - list[list.length - 1] > this.T.FOOT_STOP_MS) list.length = 0;   // a pause starts fresh
+    list.push(t);
+    while (list.length > this.T.FOOT_RATE_GAPS + 1) list.shift();
   }
 
-  // Rate from a list of step times. It falls when the next step is late, and is 0 after STOP_MS.
+  // Rate from a list of step times: the average gap, leaving out the longest and shortest
+  // once there are 4+, so one missed or extra step barely moves it. It holds steady until the
+  // next step is RATE_LATE gaps late, then falls, and is 0 after FOOT_STOP_MS.
   _rate(times, now){
     const n = times.length;
     if (n < 2) return 0;
     const since = now - times[n - 1];
-    if (since > this.T.STOP_MS) return 0;
-    const gap = (times[n - 1] - times[0]) / (n - 1);
-    return 60000 / Math.max(gap, since);
+    if (since > this.T.FOOT_STOP_MS) return 0;
+    const gaps = [];
+    for (let i = 1; i < n; i++) gaps.push(times[i] - times[i - 1]);
+    gaps.sort((a, b) => a - b);
+    const use = gaps.length >= 4 ? gaps.slice(1, -1) : gaps;
+    const gap = use.reduce((a, b) => a + b, 0) / use.length;
+    return 60000 / Math.max(gap, since / this.T.RATE_LATE);
   }
+  // still / walk / run for one number on the steps/min scale (no hysteresis; for labels)
+  rateZone(spm){ return spm < this.T.WALK_MIN_SPM ? 'still' : spm >= this.T.RUN_SPM ? 'run' : 'walk'; }
 
-  // L and R: each foot's own rate x 2 (so they're on the same scale as both feet together).
-  // both: all steps of both feet. used: the number walk/run is decided on.
+  // L and R: each foot's own rate x 2 (so they're on the same steps/min scale as both feet together).
+  // both: the average of the two (with one shoe, that shoe's). used: the number walk/run is decided on.
   rates(now){
     const live = {L:this.isLive('L', now), R:this.isLive('R', now)};
     const L = live.L ? 2 * this._rate(this.stepTimes.L, now) : 0;
     const R = live.R ? 2 * this._rate(this.stepTimes.R, now) : 0;
-    const both = live.L && live.R ? this._rate(this.stepTimes.both, now) : (live.L ? L : R);
+    const both = live.L && live.R ? (L + R) / 2 : (live.L ? L : R);
     return {L, R, both, used:both, live};
   }
   runFrom(){ return this.running ? this.T.RUN_SPM - this.T.RUN_HYST_SPM : this.T.RUN_SPM; }

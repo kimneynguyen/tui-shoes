@@ -99,6 +99,21 @@ for (const [per, want] of [[1100, 'walk'], [700, 'run']]){
   const s = new Scene('L'); stepping(s, per, 5000); const r = s.det.rates(s.t);
   console.log(`        left shoe only, ${per} ms per foot: used=${r.used.toFixed(0)}`);
   check(s.now() === want, `one shoe only: its own rate x 2 decides (${want.toUpperCase()})`); }
+{ // uneven walking: each step 1100 ms +-15%, and the sensor misses 1 step in 12
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const s = new Scene(), next = {L:s.t + 100, R:s.t + 650}; let k = 0; const t0 = s.t, both = [], foot = [];
+  s.run(30000, t => {
+    for (const id of ['L','R']){ const f = s[id];
+      if (t >= next[id] - 500 && f.down) f.lift(t);
+      if (t >= next[id]){ if ((k++ % 12) !== 5) f.land(t); else f.down = true; next[id] = t + 1100 * (0.85 + 0.3 * rnd()); }
+      if (f.steps >= 2) f.state = 1; }
+    if (t % 40 === 0 && t > t0 + 6000){ const r = s.det.rates(t); both.push(r.both); foot.push(r.L); }
+  });
+  const range = a => { a = [...a].sort((x, y) => x - y); return [a[Math.floor(a.length * 0.05)], a[Math.floor(a.length * 0.95)]]; };
+  const [b0, b1] = range(both), [f0, f1] = range(foot);
+  console.log(`        uneven walking: both feet ${b0.toFixed(0)}-${b1.toFixed(0)}, left ${f0.toFixed(0)}-${f1.toFixed(0)} steps/min (90% of the time)`);
+  check(b0 > 85 && b1 < 125 && f0 > 85 && f1 < 125, 'uneven walking with missed steps: the rate stays steady (within ~85-125)');
+  check(!s.has('run'), 'and never RUN'); }
 { const s = new Scene(); const t0 = s.t;
   s.run(1500, t => { if (t === t0 + 100) { s.L.lift(t); s.R.lift(t); } if (t === t0 + 420) { s.L.land(t); s.R.land(t); } });
   check(s.det.rates(s.t).both < 60, 'a jump (both feet landing together) does not look like fast steps'); }
@@ -106,11 +121,11 @@ for (const [per, want] of [[1100, 'walk'], [700, 'run']]){
   let cyc = 0; const ms = switchTime(s, 'run', t => { cyc += 10; const p = cyc % 700, q = (cyc + 350) % 700;
     if (p === 380) s.L.lift(t); if (p === 0) s.L.land(t); if (q === 380) s.R.lift(t); if (q === 0) s.R.land(t); });
   console.log(`        walk (109/min) -> run (171/min): RUN after ${ms} ms`);
-  check(ms !== null && ms < 1600, 'walk to run switches within ~1.5 s');
+  check(ms !== null && ms < 2800, 'walk to run switches within ~2.5 s (about 3 fast steps per foot)');
   const back = switchTime(s, 'walk', t => { cyc += 10; const p = cyc % 1100, q = (cyc + 550) % 1100;
     if (p === 600) s.L.lift(t); if (p === 0) s.L.land(t); if (q === 600) s.R.lift(t); if (q === 0) s.R.land(t); });
   console.log(`        run -> walk: WALK after ${back} ms`);
-  check(back !== null && back < 2500, 'run to walk switches within ~2.5 s');
+  check(back !== null && back < 2800, 'run to walk switches within ~2.5 s');
   s.L.land(s.t); s.R.land(s.t);
   const stop = switchTime(s, 'still', () => {});
   console.log(`        walk -> stop: STILL ${stop} ms after the last step`);

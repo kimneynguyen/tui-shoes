@@ -134,7 +134,7 @@ The **Step rate** panel draws steps per minute over the last 30 s: left (teal), 
 
 **Drag the red line** up or down (or use the **Run from** slider) to set where running starts. It works right away and is saved in this browser; **Reset** puts it back to 150. To go back to walking the rate has to drop 10 below the line, so it doesn't flicker when you're right on it.
 
-How the rate is worked out: with both shoes, from the last 4 steps of either foot (3 gaps); with one shoe, from that shoe's last 3 steps (2 gaps), times 2. If the next step is late the rate drops, and after 2 s with no step it's 0. Both feet landing together (a jump) counts as one step. Expect RUN about 1.5 s after you speed up, WALK under 1 s after you slow down, and STILL about 2 s after the last step.
+How the rate is worked out: each foot's rate is the average of its last 4 gaps between counted presses, leaving out the longest and shortest (so one missed or extra step barely moves it), times 2. With both shoes the two are averaged. It holds steady between steps and only falls once the next step is 1.5 gaps late. The Pressure panel shows each foot's rate in steps/min with a STILL / WALK / RUN label and the lines (still under 40, run from the red line). Expect RUN about 2.5 s after you speed up, WALK about 2 s after you slow down, and STILL about 2 s after the last step.
 
 No shoes yet? Click **Test** on any slot to pretend that movement happened. With `DEMO_MODE 1` in `config.h`, a shoe with no sensors makes up still, walk, run, spin, each pose and each one-foot event, 3 seconds each.
 
