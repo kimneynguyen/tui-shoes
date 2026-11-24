@@ -206,6 +206,21 @@ int main() {
     feed(40, 300);
     CHECK(!s.down, "then lifting the foot: up"); }
 
+  printf("Air time (accelerometer only)\n");
+  { AirDetector a; uint32_t t = 0;
+    auto feed = [&](float g, int ms) { for (int i = 0; i < ms; i += 10) { t += 10; a.update(t, g); } };
+    feed(1.0f, 1000); feed(0.15f, 400); feed(2.5f, 20); feed(1.0f, 500);
+    CHECK(!a.airborne && a.lastAirMs >= 380 && a.lastAirMs <= 420, "jump: 400 ms weightless then a landing hit = ~400 ms air time");
+    uint16_t before = a.lastAirMs;
+    for (int k = 0; k < 20; k++) { feed(1.0f, 300); feed(0.7f, 200); feed(1.6f, 30); }
+    CHECK(a.lastAirMs == before, "walking (never weightless) adds no air time");
+    feed(0.3f, 20); feed(1.0f, 200);
+    CHECK(a.lastAirMs == before && !a.airborne, "a 20 ms dip is a bump, not air");
+    feed(0.1f, 2500); feed(1.0f, 100);
+    CHECK(!a.airborne && a.lastAirMs == before, "weightless for 2.5 s (dropped shoe) is not air time");
+    feed(0.2f, 300); feed(1.05f, 300);
+    CHECK(!a.airborne && a.lastAirMs >= 290 && a.lastAirMs <= 320, "soft landing (no hard hit): still ends, ~300 ms"); }
+
   printf("Shuffle / slide\n");
   { Shoe s; s.still(2000, 600);
     for (int k = 0; k < 8; k++) {   // slide forward and back, sole touching lightly

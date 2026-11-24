@@ -47,6 +47,12 @@
 #define ACCEL_STEP_G      1.6f // a hit harder than this (in g) is a step
 #define ACCEL_RESET_G     1.15f// must drop back under this before the next step
 
+// ---------- Air time (accelerometer only, not the pressure sensor) ----------
+#define AIR_FREEFALL_G    0.40f  // total acceleration under this (g) = weightless = in the air
+#define AIR_MIN_MS        40     // ...for at least this long (shorter dips are bumps)
+#define AIR_LAND_G        1.20f  // a hit over this (g) ends the time in the air
+#define AIR_MAX_MS        2000   // weightless longer than this is a dropped shoe, not air time
+
 #define STEP_MIN_MS       250  // two steps closer than this count as one
 #define STEP_MAX_GAP_MS   2000 // a pause longer than this starts fresh
 

@@ -51,6 +51,44 @@ inline const char *eventName(uint8_t e) {
 // ---------------------------------------------------------------------
 // Steps. Call beginSample() once per sample, then ONE of updateFsr / updateAccel.
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Air time from the gyro board's accelerometer only: in the air the shoe is
+// close to weightless, and landing is a hit well over 1 g.
+// ---------------------------------------------------------------------
+class AirDetector {
+public:
+  bool airborne = false;      // weightless right now
+  bool landed = false;        // true only on the sample a landing happened
+  uint16_t lastAirMs = 0;     // how long the last time in the air lasted
+  uint32_t sinceMs = 0;       // when this time in the air started
+
+  void update(uint32_t now, float accelG) {
+    landed = false;
+    if (blocked) { if (accelG > 0.8f) blocked = false; else return; }
+    if (!airborne) {
+      if (accelG < AIR_FREEFALL_G) {
+        if (!lowSinceMs) lowSinceMs = now;
+        if (now - lowSinceMs >= AIR_MIN_MS) { airborne = true; sinceMs = lowSinceMs; normalSinceMs = 0; }
+      } else lowSinceMs = 0;
+      return;
+    }
+    // a soft landing may never hit AIR_LAND_G: back near 1 g for 100 ms also ends it
+    if (accelG > 0.8f) { if (!normalSinceMs) normalSinceMs = now; } else normalSinceMs = 0;
+    if (accelG > AIR_LAND_G || (normalSinceMs && now - normalSinceMs >= 100)) {
+      uint32_t air = (accelG > AIR_LAND_G ? now : normalSinceMs) - sinceMs;
+      lastAirMs = (uint16_t)(air > 60000 ? 60000 : air);
+      airborne = false; landed = true; lowSinceMs = 0;
+    } else if (now - sinceMs > AIR_MAX_MS) {
+      airborne = false; lowSinceMs = 0; blocked = true;   // a dropped or thrown shoe, not a jump
+    }
+  }
+  uint32_t airFor(uint32_t now) const { return airborne ? now - sinceMs : 0; }
+
+private:
+  uint32_t lowSinceMs = 0, normalSinceMs = 0;
+  bool blocked = false;       // after a drop: wait for normal gravity before looking again
+};
+
 class StepDetector {
 public:
   uint16_t count = 0;

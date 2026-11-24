@@ -63,6 +63,7 @@ SpinDetector spin;
 MotionClassifier motion;
 PoseTracker pose;
 EventDetector events;
+AirDetector air;
 FootPacket pkt = {};
 
 char mode = MODE_APP;
@@ -235,6 +236,7 @@ void readSensors(uint32_t now, float dt) {
     spin.update(now, yawDps, dt);
     pose.update(now, gravity.x, gravity.y, gravity.z, imu.gx, imu.gy, imu.gz);
     peakG = fmaxf(peakG, imu.accelG());
+    air.update(now, imu.accelG());
     if (!stepsFromFsr) steps.updateAccel(now, imu.accelG());
     events.update(now, motion.state, steps, pose, gravity, imu.ax, imu.ay, imu.az, imu.gyroDps(), yawDps);
   } else if (now - lastImuRetry > 2000) {
@@ -261,9 +263,9 @@ void fillPacket() {
   pkt.event   = events.last;
   pkt.events  = events.count;
   pkt.pose    = pose.pose;
-  pkt.air10   = (uint8_t)min(steps.lastAirMs / 10, 255);
+  pkt.air10   = (uint8_t)min(air.lastAirMs / 10, 255);
   pkt.flags   = (imu.ok ? FLAG_IMU_OK : 0) | (steps.down ? FLAG_FOOT_DOWN : 0) | FLAG_XIAO_OK |
-                (steps.touching ? FLAG_TOUCHING : 0);
+                (steps.touching ? FLAG_TOUCHING : 0) | (air.airborne ? FLAG_AIRBORNE : 0);
   peakG = 0;
 }
 
@@ -371,7 +373,8 @@ void printDebug(uint32_t now) {
       Serial.print(F(",push100:")); Serial.print(events.push * 100, 0);
       Serial.print(F(",down:"));    Serial.print(steps.down ? 1 : 0);
       Serial.print(F(",touch:"));   Serial.print(steps.touching ? 1 : 0);
-      Serial.print(F(",airMs:"));   Serial.print(steps.lastAirMs);
+      Serial.print(F(",airMs:"));   Serial.print(air.lastAirMs);
+      Serial.print(F(",inAir:"));   Serial.print(air.airborne ? 1 : 0);
       Serial.print(F(",taps:"));    Serial.print(events.taps);
       Serial.print(F(",pushes:"));  Serial.print(events.pushes);
       Serial.print(F("  "));        Serial.print(poseName(pose.pose));
@@ -405,9 +408,9 @@ void printEvents() {
     }
     lastPose = pose.pose;
   }
-  if (steps.stepped && mode == MODE_MOVES) {
+  if (air.landed && mode == MODE_MOVES) {
     Serial.print(F("# ")); Serial.print(FOOT);
-    Serial.print(F(" landed after ")); Serial.print(steps.lastAirMs); Serial.println(F(" ms in the air"));
+    Serial.print(F(" landed after ")); Serial.print(air.lastAirMs); Serial.println(F(" ms in the air (accelerometer)"));
   }
   if (motion.state != lastState) {
     if (showEvents) {

@@ -20,7 +20,7 @@ struct __attribute__((packed)) FootPacket {
   uint8_t  event;     // last one-foot event (EVENT_* in motion.h)
   uint8_t  events;    // goes up by 1 on every event (wraps 255 -> 0)
   uint8_t  pose;      // POSE_* in motion.h: flat, tiptoe, heel, side, sky
-  uint8_t  air10;     // how long the foot was off the ground before its last step, 10 ms units
+  uint8_t  air10;     // how long the last time in the air lasted (accelerometer, weightless), 10 ms units
 };
 
 static_assert(sizeof(FootPacket) == 20, "FootPacket must be 20 bytes (fits one Bluetooth message)");
@@ -29,3 +29,4 @@ static_assert(sizeof(FootPacket) == 20, "FootPacket must be 20 bytes (fits one B
 #define FLAG_FOOT_DOWN 0x02
 #define FLAG_XIAO_OK   0x04
 #define FLAG_TOUCHING  0x08   // some pressure on the sole (lighter than "down")
+#define FLAG_AIRBORNE  0x10   // weightless right now (accelerometer), i.e. in the air

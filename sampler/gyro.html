@@ -70,10 +70,10 @@ function ingest(id, d){
   const f = feet[id], now = performance.now();
   // accumulated turn: yaw rate (deg/s) added up between packets; a gap over 0.5 s isn't counted
   if (f.lastT && now - f.lastT < 500) f.turn += d.yaw * (now - f.lastT) / 1000;
-  const down = !!(d.flags & 2);
-  if (!down && (!f.d || (f.d.flags & 2))) f.upSince = now;
+  const inAir = !!(d.flags & 0x10);   // the shoe's accelerometer: weightless right now
+  if (inAir && (!f.d || !(f.d.flags & 0x10))) f.upSince = now;
   f.d = d; f.lastT = f.last = now; f.pkts++;
-  f.hist.push({t:now, pitch:d.pitch, roll:d.roll, yaw:d.yaw, turn:f.turn, air:d.air10 * 10, up:down ? 0 : now - f.upSince});
+  f.hist.push({t:now, pitch:d.pitch, roll:d.roll, yaw:d.yaw, turn:f.turn, air:d.air10 * 10, up:inAir ? now - f.upSince : 0});
   while (f.hist.length && f.hist[0].t < now - WINDOW_MS) f.hist.shift();
 }
 
@@ -87,8 +87,8 @@ const CHARTS = [
     lines:[{k:'yaw'}], nums:f => [[`${f.d.yaw}°/s`, `spin ${f.d.spinPct}% · ${f.d.spins} spins`]]},
   {key:'turn', title:'Spin: accumulated turn', help:'yaw rate added up on this page (360° = one full turn). "Zero turn" resets it', min:-720, max:720, unit:'°', auto:true,
     lines:[{k:'turn'}], nums:f => [[`${Math.round(f.turn)}°`, `${(f.turn / 360).toFixed(2)} turns`]]},
-  {key:'air', title:'Air time', help:'solid: air time before the last step (from the shoe), dashed: how long the foot has been up right now', min:0, max:1000, unit:'ms',
-    lines:[{k:'air'}, {k:'up', dash:[4, 4]}], nums:f => [[`${f.d.air10 * 10} ms`, f.d.flags & 2 ? 'foot down' : `up ${Math.round(f.hist.length ? f.hist[f.hist.length - 1].up : 0)} ms`]]},
+  {key:'air', title:'Air time', help:'from the accelerometer only (weightless = in the air). Solid: the last time in the air, dashed: in the air right now', min:0, max:1000, unit:'ms',
+    lines:[{k:'air'}, {k:'up', dash:[4, 4]}], nums:f => [[`${f.d.air10 * 10} ms`, f.d.flags & 0x10 ? `in the air ${Math.round(f.hist.length ? f.hist[f.hist.length - 1].up : 0)} ms` : 'not in the air']]},
 ];
 
 function build(){

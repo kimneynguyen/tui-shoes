@@ -100,12 +100,13 @@ const POSE_NAMES = ['FLAT', 'TIPTOE', 'HEEL', 'SIDE', 'SKY'];
 const EVENT_STOMP = 1, EVENT_TOE_TAP = 2, EVENT_KICK = 3, EVENT_SHUFFLE = 4;
 const EVENT_NAMES = ['-', 'STOMP', 'TOE TAP', 'KICK', 'SHUFFLE'];
 const FLAG_DOWN = 0x02;
+const FLAG_AIRBORNE = 0x10;   // the shoe's accelerometer says it's weightless right now
 const FOOT_NAME = {L:'left', R:'right'};
 const OTHER = {L:'R', R:'L'};
 
 function newFoot(id){
   return { id, last:-1e9, d:null, down:false, downSince:0, upSince:0, state:STILL, pose:POSE_FLAT, poseSince:0,
-    steps:0, spins:0, events:0, lastLand:null, lastEvent:0 };
+    steps:0, spins:0, events:0, lastLand:null, lastEvent:0, pendingLand:null };
 }
 
 class MovementDetector {
@@ -152,8 +153,12 @@ class MovementDetector {
     if (down !== f.down){ f.down = down; if (down) f.downSince = now; else f.upSince = now; }
     if (d.pose !== f.pose){ f.pose = d.pose; f.poseSince = now; }
 
+    // air time comes from the accelerometer, which can see the landing a moment after the
+    // pressure sensor does: wait for it (at most 200 ms) so the landing has its new air time
+    const airborne = !!(d.flags & FLAG_AIRBORNE);
+    if (f.pendingLand !== null && (!airborne || now - f.pendingLand > 200)){ this._landing(id, f.pendingLand, d.air10 * 10); f.pendingLand = null; }
     const newSteps = (d.steps - f.steps + 65536) % 65536; f.steps = d.steps;
-    if (newSteps > 0 && newSteps < 10) this._landing(id, now, d.air10 * 10);
+    if (newSteps > 0 && newSteps < 10){ if (airborne) f.pendingLand = now; else this._landing(id, now, d.air10 * 10); }
     const newSpins = (d.spins - f.spins + 256) % 256; f.spins = d.spins;
     if (newSpins > 0 && newSpins < 10) this._spin(id, now);
     const newEvents = (d.events - f.events + 256) % 256; f.events = d.events;

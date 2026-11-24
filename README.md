@@ -122,7 +122,7 @@ Then go to `http://localhost:8000` in Chrome. Press **Start sound**, then **Conn
 
 ### The gyro test page
 
-Open `http://localhost:8000/gyro.html` (or the **Gyro test page** link at the top of the sound app). Connect the shoes there to see, per shoe over the last 30 s: pitch, roll, yaw rate, the turn added up from the yaw rate (360° = one spin, **Zero turn** resets it), and air time (the shoe's air time before the last step, plus how long the foot has been up right now), with the numbers beside each graph. A shoe can only be connected to one page at a time.
+Open `http://localhost:8000/gyro.html` (or the **Gyro test page** link at the top of the sound app). Connect the shoes there to see, per shoe over the last 30 s: pitch, roll, yaw rate, the turn added up from the yaw rate (360° = one spin, **Zero turn** resets it), and air time from the accelerometer only (the shoe is weightless in the air: the last time in the air, plus how long it has been in the air right now; tune with `AIR_*` in `config.h`), with the numbers beside each graph. A shoe can only be connected to one page at a time.
 
 ### The pressure panel: raw force from each shoe
 
