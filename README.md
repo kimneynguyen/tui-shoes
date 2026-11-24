@@ -1,43 +1,42 @@
 # TUI shoes
 
-Two people. One shoe each. Together you remix a song with your feet.
+A pair of shoes to build a new world. 
 
 ## Pictures
 
-**The music app** with the left shoe live over Bluetooth (40 updates a second). The right player is on the simulator.
+**Testing User Interfaces** Both shoes are connected via bluetooth, feeding live data to user interfaces that were custom built for each phase of testing. First attempt at testing as many possible movements with the components inherited from the previous "Music Shoes" lab - Gyro, Xiao, and FSR. 
 
-![Music app with the left shoe connected](docs/sampler-app.png)
+![UI testing all movements](docs/sampler-app.png)
 
 **Tinkercad wiring** for one shoe's breadboard: the XIAO (left), the gyro (right, bottom half), and the FSR with its 220 ohm resistor (top right).
 
 ![Tinkercad breadboard wiring](docs/tinkercad-circuit.png)
 
-**The real left-shoe build** in its 3D-printed tent case: the XIAO ESP32-C6 (small black board) and the MPU-6050 gyro (purple board, red light) on the breadboard, with the Arduino UNO R4 Minima underneath.
+**The real left-shoe build** the XIAO ESP32-C6 (small black board) and the MPU-6050 gyro (purple board, red light) on the breadboard.
 
 ![Breadboard build, view 1](docs/breadboard-1.jpg)
-![Breadboard build, view 2](docs/breadboard-2.jpg)
 
 ## What's in this folder
 
 | Folder | What it is | Goes on |
 |---|---|---|
-| `minima_foot/` | Reads the pressure sensor and the gyro | Each Arduino Minima |
 | `xiao_radio/` | Sends the numbers to the laptop by Bluetooth | Each XIAO ESP32-C6 |
-| `sampler/` | The music app | The laptop (open in Chrome) |
+| `sampler/` | The movement detection app | The laptop (open in Chrome) |
 | `tinkercad/` | The Tinkercad practice model | Tinkercad (two Unos) |
+| `gyro/` | Reads input on four axis of the gyro (axis, tilt, spin, airtime) | Each MPU-6050 gyro |
 
-Before you upload, set `FOOT` to `L` for the left shoe or `R` for the right shoe. Do it in both the Minima code and the XIAO code.
+Before you upload, set `FOOT` to `L` for the left shoe or `R` for the right shoe. Do it in the config file of the XIAO_RADIO code.
 
 ## Parts (for both shoes)
 
 | Part | How many |
 |---|---|
-| Arduino UNO R4 Minima | 2 |
 | Breadboard | 2 |
 | XIAO ESP32-C6 (pre-soldered) | 2 (+1 spare) |
 | GY-521 MPU-6050 gyro (pre-soldered) | 2 (+1 spare) |
 | FSR pressure sensor | 2 (+1 spare) |
-| 220 ohm resistor (red red brown) | 2 (one per shoe, for the FSR) |
+| 10K ohm resistor (red red brown) | 2 (one per shoe, for the FSR) |
+| 220 ohm capacitor | 2 (one per shoe, for the FSR) |
 | Jumper wires | a bunch |
 | USB power bank + USB-C cable | 2 |
 
