@@ -125,13 +125,19 @@ Before you upload, set `FOOT` to `'L'` or `'R'` in `xiao_foot/config.h`. The Blu
 
 ## Wiring (same on both shoes)
 
-Everything runs on **3.3 V from the XIAO's 3V3 pin**. **Never use the XIAO's 5V pin.**
+**Pressure sensor (FSR), in the sole**
+- One leg → the XIAO **3V3** pin. Never 5V.
+- Other leg → **D0**
+- 10k resistor from D0 → GND
 
-- **Rails:** XIAO 3V3 → breadboard + rail, XIAO GND → − rail.
-- **Pressure sensor (FSR):** one leg → + rail, other leg → XIAO **D0**, 10k resistor from D0 → − rail.
-- **Gyro (MPU-6050):** VCC → + rail, GND → − rail, SDA → XIAO **D4**, SCL → XIAO **D5**. Leave XDA, XCL, AD0 and INT empty. It can sit any way up.
-- **Power:** power bank → the XIAO's USB-C port.
-- Later, the TCS34725 color sensor goes on the same SDA/SCL wires (address 0x29).
+**Gyro (MPU-6050), on the breadboard**
+- VCC → 3V3
+- GND → GND
+- SDA → **D4**
+- SCL → **D5**
+- I2C address **0x68**. No extra resistors. The XIAO is the only board; the Minima is gone.
+
+Color sensor is not wired yet. **D1** and **D2** are reserved for a later TCS34725 (LED and INT).
 
 ## Uploading to the XIAO
 
