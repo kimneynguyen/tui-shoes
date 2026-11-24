@@ -120,6 +120,10 @@ python3 -m http.server 8000
 ```
 Then go to `http://localhost:8000` in Chrome. Press **Start sound**, then **Connect Left shoe** (`MusicShoe-L`) and **Connect Right shoe** (`MusicShoe-R`).
 
+### The gyro test page
+
+Open `http://localhost:8000/gyro.html` (or the **Gyro test page** link at the top of the sound app). Connect the shoes there to see, per shoe over the last 30 s: pitch, roll, yaw rate, the turn added up from the yaw rate (360° = one spin, **Zero turn** resets it), and air time (the shoe's air time before the last step, plus how long the foot has been up right now), with the numbers beside each graph. A shoe can only be connected to one page at a time.
+
 ### The pressure panel: raw force from each shoe
 
 The **Pressure** panel (Play view, above the step-rate graph) shows each shoe's sensor reading as it arrives, 25 times a second: a big number (0-4095) and a bar per foot, plus a 10 s trace. It is not tied to steps, so holding, light presses and hard presses all show. Shaded areas are where the shoe counts the foot as down, and ticks on the top edge are counted steps. Under each number: the time between that foot's last two counted presses and its step count. The same raw number is next to "left / right pressure" on the step-rate graph and in each shoe's box lower down.
