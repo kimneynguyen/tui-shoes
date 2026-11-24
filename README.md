@@ -1,4 +1,4 @@
-# Music Sampling Shoes
+# TUI shoes
 
 Two people. One shoe each. Together you remix a song with your feet.
 
