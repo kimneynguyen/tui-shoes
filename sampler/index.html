@@ -22,7 +22,7 @@ button.small{padding:3px 9px;font-size:12px}
 .tabs button{border:0;background:transparent;padding:6px 14px}
 .tabs button.on{background:#252a35}
 .status{color:var(--mute);font-size:13px;margin-left:auto}
-main,.monitor{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 20px 40px;max-width:1280px;margin:0 auto}
+main,.monitor{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px 20px 40px;max-width:1320px;margin:0 auto}
 .hidden{display:none!important}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
 .full{grid-column:1/-1}
@@ -37,9 +37,9 @@ h3{margin:0 0 6px;font-size:12px;color:var(--mute);text-transform:uppercase;lett
 .bar i{position:absolute;top:0;bottom:0;left:0;width:0;background:var(--c,var(--accent));border-radius:6px}
 .bar.signed:after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:#3a404d}
 .num{font-variant-numeric:tabular-nums;color:var(--mute);text-align:right;font-size:12px}
-.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .help{color:var(--mute);font-size:13px}
-.help kbd{background:#252a35;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--text)}
+.help kbd,.help code{background:#252a35;border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:var(--text);font-size:12px}
 .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12px;letter-spacing:.06em;background:var(--still);color:#0e1014}
 .badge.s0{background:var(--still)}.badge.s1{background:var(--walk)}.badge.s2{background:var(--run)}.badge.s3{background:var(--spin)}
 .badge.big{font-size:22px;padding:6px 18px}
@@ -47,34 +47,60 @@ h3{margin:0 0 6px;font-size:12px;color:var(--mute);text-transform:uppercase;lett
 .lamp.on{background:var(--ok);box-shadow:0 0 6px var(--ok)}
 .lamp.bad{background:var(--bad)}
 /* play view */
-.now{display:grid;grid-template-columns:1.3fr 1fr 1.2fr;gap:20px;align-items:center}
+.now{display:grid;grid-template-columns:1.6fr 1fr;gap:20px;align-items:center}
 @media(max-width:860px){.now{grid-template-columns:1fr}}
 .label{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
-.big{font-size:26px;font-weight:700}
-.nowSound{display:flex;gap:14px;align-items:center}
-.swatch{width:54px;height:54px;border-radius:12px;background:var(--accent);flex:none;transition:background .3s}
-.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.nowMove{font-size:34px;font-weight:750;letter-spacing:.01em}
+.nowMove .n{color:var(--mute);font-weight:500;margin-right:10px}
+.slots{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media(max-width:1100px){.slots{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:700px){.slots{grid-template-columns:repeat(2,1fr)}}
-.slot{background:#0f1217;border:2px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:6px}
-.slot.on{border-color:var(--accent);box-shadow:0 0 18px rgba(165,139,255,.25)}
-.slot .top{display:flex;align-items:center;gap:8px}
-.slot .n{font-size:12px;color:var(--mute)}
+.slot{background:#0f1217;border:2px dashed var(--line);border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;gap:5px;transition:border-color .2s,box-shadow .2s}
+.slot.filled{border-style:solid}
+.slot.on{border-color:var(--accent);border-style:solid;box-shadow:0 0 18px rgba(165,139,255,.35)}
+.slot.drag{border-color:var(--ok);background:#13201a}
+.slot .top{display:flex;align-items:baseline;gap:7px}
+.slot .n{font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
 .slot .name{font-weight:650}
-.slot input[type=color]{width:26px;height:26px;border:0;padding:0;background:none;cursor:pointer;margin-left:auto}
-.slot label.file{font-size:12px;color:var(--mute);cursor:pointer;text-decoration:underline}
+.slot .kind{margin-left:auto;font-size:11px;color:var(--mute);white-space:nowrap}
+.slot .how{font-size:12px;color:var(--mute);min-height:34px}
+.slot .file{font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot .file.empty{color:var(--mute);font-style:italic}
+.slot .opts{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)}
+.slot .opts input[type=range]{flex:1;min-width:0}
 .slot input[type=file]{display:none}
-.footrow{display:flex;align-items:center;gap:10px;margin:6px 0}
-.sim button.on{border-color:var(--accent);background:#2e2843}
-.flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(165,139,255,.35),transparent 70%);opacity:0;transition:opacity .5s}
+.slot .count{font-size:11px;color:var(--mute);margin-left:auto}
+.two{color:#f2c94c}
+.footrow{display:flex;align-items:center;gap:10px;margin:6px 0;flex-wrap:wrap}
+.flash{position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle,rgba(165,139,255,.30),transparent 70%);opacity:0;transition:opacity .5s}
 .flash.on{opacity:1;transition:none}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
+.kv b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
+label.chk{display:block;margin:8px 0}
+/* step-rate graph */
+.rateTop{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.rateTop .badge{min-width:64px;text-align:center}
+.rateNums{display:flex;gap:14px;font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.rateNums b{color:var(--text);font-weight:650}
+.rateCtl{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:13px;color:var(--mute)}
+.rateCtl input[type=range]{width:170px}
+canvas#rateCv{width:100%;height:230px;background:#0a0c10;border-radius:8px;display:block;touch-action:none}
+.pressTop{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:8px}
+@media(max-width:700px){.pressTop{grid-template-columns:1fr}}
+.pressFoot{display:flex;align-items:center;gap:12px;background:#0f1217;border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.pressFoot .big{font-size:30px;font-weight:750;font-variant-numeric:tabular-nums;min-width:78px;text-align:right}
+.pressFoot .bar{flex:1;height:16px}
+.pressFoot .sub{display:block;font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap;margin-top:2px}
+.pressFoot .pressRate{font-size:13px;color:var(--mute);white-space:nowrap}
+.pressFoot .pressRate b{font-size:20px;color:var(--text);font-variant-numeric:tabular-nums;display:inline-block;min-width:34px;text-align:right}
+.pressFoot .pressRate .badge{margin-left:4px;font-size:11px;padding:2px 8px}
+canvas#pressCv{width:100%;height:200px;background:#0a0c10;border-radius:8px;display:block}
 /* monitor */
 .monfoot .comps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.monfoot .comps{grid-template-columns:1fr}}
 .comp{background:#0f1217;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .comp.wide{grid-column:1/-1}
 .comp.off{opacity:.45}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px}
-.kv b{font-weight:600;font-variant-numeric:tabular-nums;text-align:right}
 .comp .row{grid-template-columns:62px 1fr 52px;margin:3px 0;font-size:13px}
 canvas.plot{width:100%;height:150px;background:#0a0c10;border-radius:8px;display:block}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--mute);margin-top:6px}
@@ -95,28 +121,69 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
   <button class="primary" id="startBtn">Start sound</button>
   <button class="L" id="bleL">Connect Left shoe</button>
   <button class="R" id="bleR">Connect Right shoe</button>
-  <button id="usbBtn" title="Plug a Minima straight into this laptop to test without Bluetooth">USB</button>
+  <a href="gyro.html" style="color:var(--accent);font-size:13px">Gyro test page</a>
+  <button id="usbBtn" title="Plug a shoe's XIAO straight into this laptop to test without Bluetooth">USB</button>
   <nav class="tabs"><button data-tab="play" class="on">Play</button><button data-tab="monitor">Monitor</button></nav>
-  <div class="status" id="status">Not connected. Use the simulator buttons, or connect a shoe.</div>
+  <div class="status" id="status">Not connected. Use the Test buttons, or connect a shoe.</div>
 </header>
 
 <!-- ===================== PLAY ===================== -->
 <main id="playView">
   <section class="panel full now">
-    <div class="nowSound">
-      <div class="swatch" id="nowSwatch"></div>
-      <div><div class="label">Sound</div><div class="big" id="nowName">-</div><div class="help" id="nowSlot"></div></div>
-    </div>
-    <div><div class="label">Movement</div><span class="badge big" id="nowState">STILL</span><div class="help" id="nowTurns"></div></div>
     <div>
-      <div class="label">Volume</div>
-      <div class="bar" style="height:18px"><i id="nowVolBar"></i></div>
-      <div class="help" id="nowVolTxt">Press Start sound</div>
+      <div class="label">Movement now</div>
+      <div class="nowMove" id="nowMove"><span class="n">1</span>Standing still</div>
+      <div class="help" id="nowWhy">-</div>
+    </div>
+    <div>
+      <div class="label">Sound</div>
+      <div id="nowSound" style="font-weight:650">-</div>
+      <div class="row" style="grid-template-columns:70px 1fr 48px;margin-top:8px"><span class="help">Volume</span><input type="range" id="masterVol" min="0" max="100"><span class="num" id="masterVolN"></span></div>
     </div>
   </section>
 
-  <section class="panel full">
-    <h2>The 4 sounds <span class="tag">spin 360 on one or both feet to go to the next one</span></h2>
+  <section class="panel full" id="pressPanel">
+    <h2>Pressure <span class="tag">raw force from each shoe's sensor (0-4095), every packet, last 10 s. Not tied to steps.</span></h2>
+    <div class="pressTop">
+      <div class="pressFoot" id="pressL">
+        <span style="color:var(--L);font-weight:700;width:44px">Left</span>
+        <span class="big" id="pressNL">-</span>
+        <div class="bar"><i id="pressBarL" style="--c:var(--L)"></i></div>
+        <span class="lamp" id="pressDownL" title="foot down (the shoe's step detector)"></span>
+        <span class="pressRate"><b id="pressSpmL">-</b> steps/min <span class="badge s0" id="pressZoneL">-</span>
+          <span class="sub" id="pressSubL">not connected</span></span>
+      </div>
+      <div class="pressFoot" id="pressR">
+        <span style="color:var(--R);font-weight:700;width:44px">Right</span>
+        <span class="big" id="pressNR">-</span>
+        <div class="bar"><i id="pressBarR" style="--c:var(--R)"></i></div>
+        <span class="lamp" id="pressDownR" title="foot down (the shoe's step detector)"></span>
+        <span class="pressRate"><b id="pressSpmR">-</b> steps/min <span class="badge s0" id="pressZoneR">-</span>
+          <span class="sub" id="pressSubR">not connected</span></span>
+      </div>
+    </div>
+    <canvas id="pressCv"></canvas>
+    <p class="help" style="margin:6px 0 0">The number and the trace are the sensor reading as it arrives (25 times a second), so light and hard presses and how long you hold them all show. Shaded = the shoe counts the foot as down; a tick on the top edge = a counted step. Next to it: that foot's step rate, an average of its last 4 gaps between counted presses (leaving out the longest and shortest), times 2 so it's on the same scale as the lines on the step-rate graph. It holds steady between steps and only falls when the next step is clearly late. The label says where that number falls; the movement itself is decided on both feet together (see the badge on the step-rate graph).</p>
+  </section>
+
+  <section class="panel full" id="ratePanel">
+    <h2>Step rate <span class="tag">from the pressure sensors, last 30 s. Drag the red run line (or use the slider) to set where running starts.</span></h2>
+    <div class="rateTop">
+      <span class="badge big s0" id="rateState">STILL</span>
+      <div class="rateNums">
+        <span><i style="display:inline-block;width:12px;height:3px;background:var(--L);vertical-align:middle"></i> left pressure <b id="ratePL">-</b> &middot; <b id="rateL">0</b>/min</span>
+        <span><i style="display:inline-block;width:12px;height:3px;background:var(--R);vertical-align:middle"></i> right pressure <b id="ratePR">-</b> &middot; <b id="rateR">0</b>/min</span>
+        <span><i style="display:inline-block;width:12px;height:3px;background:#fff;vertical-align:middle"></i> both feet <b id="rateB">0</b> steps/min</span>
+      </div>
+      <div class="rateCtl">Run from <input type="range" id="runSpm" min="100" max="220" step="1"> <b id="runSpmN" style="color:var(--text);min-width:30px"></b> steps/min
+        <button class="small" id="runSpmReset" title="back to 150">Reset</button></div>
+    </div>
+    <canvas id="rateCv"></canvas>
+    <p class="help" style="margin:6px 0 0">Small ticks under the lines are the steps each shoe counted (one per press of its pressure sensor, left above, right below). The rate needs 2 steps of a foot within 2 s, so a single press shows a tick but no line yet. Steps per minute counting both feet (people walk at about 100-120 and run at 150-180). Left and right are each foot's own rate &times; 2, so all three lines use the same scale. With one shoe connected, its line decides. Under <span style="color:var(--walk)">walk</span> it's still, above the red line it's running (and it has to drop <span id="runHyst"></span> under the line to go back to walking).</p>
+  </section>
+
+  <section class="panel full" id="slotsPanel">
+    <h2>The 15 movement sounds <span class="tag">drop an audio file on a slot (or several files on this box, named like <code>05-jump.wav</code>)</span></h2>
     <div class="slots" id="slots"></div>
   </section>
 
@@ -124,19 +191,19 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
   <section class="panel" id="footR"></section>
 
   <section class="panel">
-    <h2>Volume</h2>
-    <div class="row"><span>Walking</span><input type="range" id="walkVol" min="0" max="100"><span class="num" id="walkVolN"></span></div>
-    <div class="row"><span>Running</span><input type="range" id="runVol" min="0" max="100"><span class="num" id="runVolN"></span></div>
-    <label class="help" style="display:block;margin:10px 0 4px"><input type="checkbox" id="requireTurns"> Both feet must take turns stepping (left, right, left...) when both shoes are connected</label>
-    <p class="help">Running plays at the Running level (100% = as loud as this app goes, so turn the laptop volume up too). Standing still for 2 seconds pauses the sound. It picks up where it left off when you move again.</p>
+    <h2>Settings</h2>
+    <label class="chk"><input type="checkbox" id="beepEmpty"> Beep for empty slots (a test tone, so you can hear what's detected before you have sounds)</label>
+    <label class="chk"><input type="checkbox" id="requireTurns"> Walking needs both feet to take turns (left, right, left...) when both shoes are connected</label>
+    <div class="btns"><button class="small" id="clearAll">Remove all dropped sounds</button></div>
+    <p class="help">Only one movement sound plays at a time. A new movement cuts the old sound. Quick moves (spin, jump, hop, kick, lunge, stomp, toe tap) play once; lasting ones (still, walk, run, skip, dancer's pose, tilt, sky, shuffle) loop while you keep doing them. Change that with each slot's <b>loop</b> box.</p>
   </section>
 
   <section class="panel">
-    <h2>How to play</h2>
+    <h2>Adding your sounds</h2>
     <div class="help">
-      <p><b>Walk</b>: normal volume. <b>Run</b>: max volume. <b>Stand still</b> for 2 seconds: the sound pauses. <b>Spin 360</b> on one foot or both: next sound. Both feet spinning together count as one spin.</p>
-      <p>Only steps count. Tilting or shaking a shoe does nothing. With both shoes connected, the feet have to take turns (left, right, left) at walking speed or faster. With one shoe connected, that shoe's own steps count.</p>
-      <p>Keyboard for testing without shoes: <kbd>W</kbd> walk, <kbd>R</kbd> run, <kbd>X</kbd> still, <kbd>S</kbd> spin, <kbd>1</kbd>-<kbd>4</kbd> pick a sound.</p>
+      <p><b>Drag and drop</b> an audio file (WAV, MP3, OGG, M4A) onto a slot, or click <b>Choose</b>. Dropped sounds are saved in this browser and come back next time.</p>
+      <p><b>Or a folder:</b> put files in <code>sampler/sounds/</code> named by number and movement, e.g. <code>01-still.mp3</code>, <code>05-jump.wav</code>, <code>12-toetap.ogg</code>. They load when the page opens. A dropped sound wins over the folder.</p>
+      <p><b>Test</b> on a slot pretends that movement happened, so you can try sounds without the shoes. Slots marked <span class="two">both shoes</span> are only detected with both shoes connected.</p>
     </div>
   </section>
 </main>
@@ -153,9 +220,9 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
     <div id="monL"></div>
     <div id="monR"></div>
     <section class="panel full">
-      <h2>Serial monitor <span class="tag">Bluetooth packets, USB lines, and what the app did</span></h2>
+      <h2>Serial monitor <span class="tag">Bluetooth packets, USB lines, and every movement the app detected (and why)</span></h2>
       <div class="consolebar">
-        <label>Show <select id="logShow"><option value="all">everything</option><option value="L">left shoe</option><option value="R">right shoe</option><option value="events">events only</option></select></label>
+        <label>Show <select id="logShow"><option value="all">everything</option><option value="L">left shoe</option><option value="R">right shoe</option><option value="events">movements only</option></select></label>
         <label>Data lines <select id="logRate"><option value="all">every one</option><option value="5">5 per second</option><option value="none">none</option></select></label>
         <label><input type="checkbox" id="logPause"> pause</label>
         <label><input type="checkbox" id="logScroll" checked> autoscroll</label>
@@ -165,7 +232,7 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
       <pre class="log" id="log"></pre>
       <div class="sendrow">
         <select id="sendFoot"><option value="any">USB shoe</option><option value="L">Left (USB)</option><option value="R">Right (USB)</option></select>
-        <input type="text" id="sendText" placeholder="type a key for the Minima, e.g. h, then Enter">
+        <input type="text" id="sendText" placeholder="type a key for the XIAO, e.g. h, then Enter">
         <button id="sendBtn">Send</button>
       </div>
       <div class="sendrow">
@@ -176,388 +243,351 @@ pre.log{background:#07080b;border:1px solid var(--line);border-radius:8px;height
         <button class="small" data-cmd="3">3 steps</button>
         <button class="small" data-cmd="4">4 spin</button>
         <button class="small" data-cmd="5">5 state</button>
-        <button class="small" data-cmd="6">6 XIAO</button>
-        <button class="small" data-cmd="c" title="keep the shoe still">c gyro offset</button>
+        <button class="small" data-cmd="6">6 Bluetooth</button>
+        <button class="small" data-cmd="7">7 movements</button>
+        <button class="small" data-cmd="c" title="shoe flat on the floor and still">c gyro offset + flat</button>
         <button class="small" data-cmd="h">h help</button>
       </div>
-      <p class="help">Keys only reach a Minima plugged in by USB (Bluetooth only goes shoe to laptop). The boxes above update in key 0 (app) mode. Close this page before using the Arduino Serial Monitor, since only one program can open the USB port.</p>
+      <p class="help">Keys only reach a XIAO plugged in by USB (Bluetooth only goes shoe to laptop). The boxes above update in key 0 (app) mode. Close this page before using the Arduino Serial Monitor, since only one program can open the USB port.</p>
     </section>
   </section>
 </div>
 <div class="flash" id="flash"></div>
 
+<script src="movements.js"></script>
 <script>
 // ===================== constants =====================
-const SERVICE_UUID = '7b1e0001-5d2c-4c3b-9a41-50a1c5717e00';   // must match xiao_radio.ino
+const SERVICE_UUID = '7b1e0001-5d2c-4c3b-9a41-50a1c5717e00';   // must match xiao_foot.ino
 const DATA_UUID    = '7b1e0002-5d2c-4c3b-9a41-50a1c5717e00';
-const STATES = ['STILL', 'WALK', 'RUN', 'SPIN'];
-const STILL = 0, WALK = 1, RUN = 2, SPIN = 3;
-const LIVE_MS = 1000;            // no data for this long = shoe not live (simulator takes over)
-const SPIN_TOGETHER_MS = 1200;   // both feet spinning this close together = one spin
+const FOOT_UUID    = '7b1e0003-5d2c-4c3b-9a41-50a1c5717e00';   // reads "L" or "R"
+const { MOVES, MOVE, MovementDetector, GAIT_NAMES, POSE_NAMES, EVENT_NAMES } = window.Moves;
+const LIVE_MS = Moves.TUNING.LIVE_MS;
 const PLOT_MS = 10000;
 const LOG_MAX = 4000;
-const LOOP_SEC = 8, SR = 44100;
 const FOOT_NAME = {L:'Left', R:'Right'};
-// Taking turns (both shoes connected): a step on one foot right after a step on the other.
-const TURN_MIN_MS = 150, TURN_MAX_MS = 1500;   // gap between a left step and a right step
-const TURN_WINDOW_MS = 3000, TURNS_NEEDED = 2;  // this many turns in this long = walking
-const STOP_MS = 2000;                           // no step for this long = still
 
-const DEFAULT_SLOTS = [
-  {name:'Rain',       color:'#4a90e2'},
-  {name:'Ocean',      color:'#2ec4b6'},
-  {name:'Wind chimes',color:'#f2c94c'},
-  {name:'Campfire',   color:'#f2994a'},
-];
+// Sounds in a folder: sampler/sounds/<number>-<key>.<ext>, e.g. sounds/05-jump.wav
+const SOUND_FOLDER = 'sounds/';
+const SOUND_EXTS = ['mp3', 'wav', 'ogg', 'm4a'];
+const soundFileBase = m => `${String(m.n).padStart(2, '0')}-${m.key}`;
 
 function load(k, d){ try{ const v = localStorage.getItem('ses_'+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } }
 function save(k, v){ try{ localStorage.setItem('ses_'+k, JSON.stringify(v)); }catch(e){} }
 const clamp = (v,a,b) => Math.min(b, Math.max(a, v));
 const $ = id => document.getElementById(id);
 
-// ===================== feet =====================
-function emptyData(){ return {state:0, spins:0, flags:0, spinPct:0, fsr:0, steps:0, stepMs:0, ax:0, ay:0, az:0, yaw:0, gyro:0}; }
-function mkFoot(id){
-  return { id, d:emptyData(), src:'', lastLive:0, pkts:0, rate:0, hist:[],
-    lastSpins:null, lastSteps:null, lastState:null, sim:{state:STILL, spinUntil:0, spins:0} };
-}
+// ===================== movement detection (sampler/movements.js) =====================
+const det = new MovementDetector({ requireTurns: load('requireTurns', true), onLog: text => logEvent(null, text) });
+
+// ===================== feet (for the display) =====================
+function emptyData(){ return {state:0, spins:0, flags:0, spinPct:0, fsr:0, steps:0, stepMs:0, pitch:0, roll:0, peakG:0, gyro:0, yaw:0, event:0, events:0, pose:0, air10:0}; }
+function mkFoot(id){ return { id, d:emptyData(), src:'', lastLive:0, pkts:0, rate:0, hist:[], lastState:null, lastPose:null }; }
 const feet = {L:mkFoot('L'), R:mkFoot('R')};
 const isLive = (f, now = performance.now()) => now - f.lastLive < LIVE_MS;
-function footState(f, now = performance.now()){
-  if (isLive(f, now)) return f.d.state;
-  return now < f.sim.spinUntil ? SPIN : f.sim.state;
-}
 
 // Every packet from a shoe (Bluetooth or USB) comes through here.
 function ingest(id, d, src, rawLine){
   const f = feet[id], now = performance.now();
   f.d = d; f.src = src; f.lastLive = now; f.pkts++;
-  f.hist.push({t:now, fsr:d.fsr, yaw:d.yaw, g:Math.hypot(d.ax, d.ay, d.az)/100, gyro:d.gyro, down:(d.flags & 2) ? 1 : 0});
+  f.hist.push({t:now, fsr:d.fsr, yaw:d.yaw, g:d.peakG, gyro:d.gyro, pitch:d.pitch, down:(d.flags & 2) ? 1 : 0});
   while (f.hist.length && f.hist[0].t < now - PLOT_MS) f.hist.shift();
   logData(id, src, rawLine || packetToCsv(id, d));
-  if (f.lastState !== d.state){ if (f.lastState !== null) logEvent(id, `${FOOT_NAME[id]} shoe: ${STATES[d.state] || d.state}`); f.lastState = d.state; }
-  if (f.lastSteps === null) f.lastSteps = d.steps;
-  const newSteps = (d.steps - f.lastSteps + 65536) % 65536;
-  f.lastSteps = d.steps;
-  if (newSteps > 0 && newSteps < 10) recordStep(id, now);
-  if (f.lastSpins === null) f.lastSpins = d.spins;
-  const n = (d.spins - f.lastSpins + 256) % 256;
-  f.lastSpins = d.spins;
-  if (n > 0 && n < 10) for (let i = 0; i < n; i++) onSpin(id);
+  if (f.lastState !== d.state){ if (f.lastState !== null) logEvent(id, `${FOOT_NAME[id]} shoe: ${GAIT_NAMES[d.state] || d.state}`); f.lastState = d.state; }
+  if (f.lastPose !== d.pose){ if (f.lastPose !== null) logEvent(id, `${FOOT_NAME[id]} shoe pose: ${POSE_NAMES[d.pose] || d.pose} (pitch ${d.pitch}°, roll ${d.roll}°)`); f.lastPose = d.pose; }
+  const fd = det.feet[id];
+  if (fd.d && ((d.events - fd.events + 256) % 256)) logEvent(id, `${FOOT_NAME[id]} shoe says: ${EVENT_NAMES[d.event] || d.event}`);
+  if (fd.d && ((d.spins - fd.spins + 256) % 256)) logEvent(id, `${FOOT_NAME[id]} shoe says: 360 SPIN`);
+  if (fd.d && det.isLive(id, now) && ((d.steps - fd.steps + 65536) % 65536)){
+    stepMarks.push({t:now, id});
+    logEvent(id, `${FOOT_NAME[id]} step #${d.steps} (pressure ${d.fsr}` + (d.stepMs ? `, ${d.stepMs} ms after this foot's last step)` : ', first step after a pause)'));
+  }
+  det.ingest(id, d, now);
 }
 
-// 20 bytes, see minima_foot/packet.h
+// 20 bytes, see xiao_foot/packet.h
 function decodePacket(v){
   return { state:v.getUint8(0), spins:v.getUint8(1), flags:v.getUint8(2), spinPct:v.getUint8(3),
     fsr:v.getUint16(4,true), steps:v.getUint16(6,true), stepMs:v.getUint16(8,true),
-    ax:v.getInt16(10,true), ay:v.getInt16(12,true), az:v.getInt16(14,true),
-    yaw:v.getInt16(16,true), gyro:v.getUint16(18,true) };
+    pitch:v.getInt8(10), roll:v.getInt8(11), peakG:v.getUint8(12)/16, gyro:v.getUint8(13)*8,
+    yaw:v.getInt16(14,true), event:v.getUint8(16), events:v.getUint8(17), pose:v.getUint8(18), air10:v.getUint8(19) };
 }
-// USB line: FOOT,state,spins,spinPct,fsr,steps,stepMs,ax,ay,az,yawRate,gyro,flags
+// USB line: FOOT,state,spins,spinPct,fsr,steps,stepMs,pitch,roll,peakG,yawRate,gyro,flags,event,events,pose,air10
+const CSV_FIELDS = 17;
 function parseCsv(p){
   const n = p.slice(1).map(Number);
-  return { state:n[0], spins:n[1], spinPct:n[2], fsr:n[3], steps:n[4], stepMs:n[5], ax:n[6], ay:n[7], az:n[8], yaw:n[9], gyro:n[10], flags:n[11] };
+  return { state:n[0], spins:n[1], spinPct:n[2], fsr:n[3], steps:n[4], stepMs:n[5], pitch:n[6], roll:n[7], peakG:n[8]/16,
+    yaw:n[9], gyro:n[10]*8, flags:n[11], event:n[12], events:n[13], pose:n[14], air10:n[15] };
 }
 function packetToCsv(id, d){
-  return [id, d.state, d.spins, d.spinPct, d.fsr, d.steps, d.stepMs, d.ax, d.ay, d.az, d.yaw, d.gyro, d.flags].join(',');
+  return [id, d.state, d.spins, d.spinPct, d.fsr, d.steps, d.stepMs, d.pitch, d.roll, Math.round(d.peakG*16), d.yaw, Math.round(d.gyro/8), d.flags, d.event, d.events, d.pose, d.air10].join(',');
 }
 
-// ===================== what the shoes mean for the sound =====================
-let lastStep = null, turns = [], requireTurns = load('requireTurns', true), wasTurning = false;
-function recordStep(id, t){
-  const gap = lastStep ? t - lastStep.t : Infinity, otherFoot = lastStep && lastStep.foot !== id;
-  if (otherFoot && gap < TURN_MIN_MS){
-    // both feet landed together (a hop): neither step is a turn
-    if (lastStep.turn) turns.pop();
-    lastStep = {foot:id, t, turn:false, together:true};
-    return;
-  }
-  const turn = otherFoot && !lastStep.together && gap <= TURN_MAX_MS;
-  if (turn) turns.push(t);
-  lastStep = {foot:id, t, turn, together:false};
-  while (turns.length && turns[0] < t - TURN_WINDOW_MS) turns.shift();
-}
-const recentTurns = (now = performance.now()) => turns.filter(t => t > now - TURN_WINDOW_MS).length;
-const feetTakingTurns = (now = performance.now()) =>
-  !!lastStep && now - lastStep.t < STOP_MS && recentTurns(now) >= TURNS_NEEDED;
-const usingTurns = (now = performance.now()) => requireTurns && isLive(feet.L, now) && isLive(feet.R, now);
-
-function overallState(now = performance.now()){
-  const s = ['L','R'].map(id => footState(feet[id], now));
-  if (usingTurns(now)){
-    // both shoes connected: only left-right-left stepping plays sound
-    if (!feetTakingTurns(now)) return s.includes(SPIN) ? WALK : STILL;
-    return s.includes(RUN) ? RUN : WALK;
-  }
-  if (s.includes(RUN)) return RUN;
-  if (s.includes(WALK) || s.includes(SPIN)) return WALK;
-  return STILL;
-}
-const anySpinning = (now = performance.now()) => ['L','R'].some(id => footState(feet[id], now) === SPIN);
-
-let lastSwitch = {t:-1e9, foot:null};
-function onSpin(id){
-  const now = performance.now();
-  logEvent(id, `${FOOT_NAME[id]} shoe: 360 SPIN`);
-  if (lastSwitch.foot && lastSwitch.foot !== id && now - lastSwitch.t < SPIN_TOGETHER_MS){
-    logEvent(null, 'both feet spun together, counted as one spin');
-    lastSwitch = {t:-1e9, foot:null};
-    return;
-  }
-  lastSwitch = {t:now, foot:id};
-  selectSound((active + 1) % 4, `${FOOT_NAME[id].toLowerCase()} foot spin`);
-}
-
-// ===================== audio =====================
-let ctx = null, master, comp, started = false, paused = true, stillSince = 0, active = load('active', 0);
-const slots = load('slots', DEFAULT_SLOTS).map((s, i) => ({...DEFAULT_SLOTS[i], ...s, buffer:null, gain:null, source:null, file:null}));
-const vol = {walk:load('walkVol', 50), run:load('runVol', 100)};
-
-function ensureCtx(){
-  if (ctx) return;
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
-  comp = ctx.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 4;
-  master = ctx.createGain(); master.gain.value = 0;
-  master.connect(comp); comp.connect(ctx.destination);
-  for (const s of slots){ s.gain = ctx.createGain(); s.gain.gain.value = 0; s.gain.connect(master); }
-}
-
-function startSlot(i){
-  const s = slots[i];
-  if (s.source){ try{ s.source.stop(); }catch(e){} s.source.disconnect(); s.source = null; }
-  if (!s.buffer) return;
-  const src = ctx.createBufferSource(); src.buffer = s.buffer; src.loop = true;
-  src.connect(s.gain); src.start(); s.source = src;
-}
+// ===================== sounds =====================
+const ctx = new (window.AudioContext || window.webkitAudioContext)();
+const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -6; comp.ratio.value = 4;
+const master = ctx.createGain(); master.connect(comp); comp.connect(ctx.destination);
+let masterVol = load('masterVol', 80); master.gain.value = masterVol/100;
+let started = false, beepEmpty = load('beepEmpty', true), playing = null, playedId = -1;
+const slotOpts = load('slotOpts', {});
+const slots = Object.fromEntries(MOVES.map(m => [m.key, {
+  buffer:null, label:'', from:'', folderBuffer:null, folderLabel:'',
+  loop: slotOpts[m.key] ? slotOpts[m.key].loop : m.kind === 'state',
+  vol:  slotOpts[m.key] ? slotOpts[m.key].vol : 100,
+}]));
+function saveSlotOpts(){ save('slotOpts', Object.fromEntries(MOVES.map(m => [m.key, {loop:slots[m.key].loop, vol:slots[m.key].vol}]))); }
 
 async function start(){
-  ensureCtx();
   await ctx.resume();
-  if (slots.some(s => !s.buffer)){
-    setStatus('Making the 4 sounds...');
-    const made = await buildDefaultSounds();
-    slots.forEach((s, i) => { if (!s.buffer) s.buffer = made[i]; });
-  }
-  slots.forEach((s, i) => { startSlot(i); s.gain.gain.value = i === active ? 1 : 0; });
-  started = true; paused = false;
-  $('startBtn').textContent = 'Restart sound';
+  started = true;
+  $('startBtn').textContent = 'Sound on';
   logApp('sound started');
+  playMovement(det.current);
   updateStatus();
 }
 
-function selectSound(i, why){
-  active = i; save('active', active);
-  if (ctx) slots.forEach((s, k) => s.gain.gain.setTargetAtTime(k === i ? 1 : 0, ctx.currentTime, 0.12));
-  if (ctx && !paused) swoosh();
-  const fl = $('flash'); fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 80);
-  logApp(`sound ${i + 1}: ${slots[i].name}` + (why ? ` (${why})` : ''));
-  drawSlots();
+// Only one movement sound at a time: a new one always stops the old one.
+function stopPlaying(){
+  if (!playing) return;
+  const {src, g} = playing; playing = null;
+  try{ g.gain.setTargetAtTime(0, ctx.currentTime, 0.02); src.stop(ctx.currentTime + 0.12); }catch(e){}
 }
-
-// Walk = walk volume, run = run volume, still (both shoes) = fade out, then pause.
-function applyVolume(){
+function playMovement(cur){
+  stopPlaying();
+  const m = MOVE[cur.key], s = slots[cur.key];
   if (!started) return;
-  const now = performance.now(), st = overallState(now);
-  const target = st === RUN ? vol.run/100 : st === WALK ? vol.walk/100 : 0;
-  if (target > 0){
-    stillSince = 0;
-    if (paused){ paused = false; ctx.resume(); logApp('sound resumed'); }
-    master.gain.setTargetAtTime(target, ctx.currentTime, 0.15);
-  } else {
-    if (!stillSince) stillSince = now;
-    master.gain.setTargetAtTime(0, ctx.currentTime, 0.12);
-    if (!paused && now - stillSince > 700){ paused = true; ctx.suspend(); logApp('sound paused (no movement)'); }
+  if (s.buffer){
+    const src = ctx.createBufferSource(), g = ctx.createGain();
+    src.buffer = s.buffer; src.loop = s.loop; g.gain.value = s.vol/100;
+    src.connect(g); g.connect(master); src.start();
+    playing = {key:cur.key, src, g};
+    src.onended = () => { if (playing && playing.src === src) playing = null; };
+  } else if (beepEmpty && cur.key !== 'still') beep(m);
+}
+
+// Test tone for an empty slot: a different note per movement, two blips for quick moves.
+function beep(m){
+  const t = ctx.currentTime, f = 330 * Math.pow(2, [0,2,4,7,9][(m.n - 1) % 5]/12 + Math.floor((m.n - 1)/5));
+  const g = ctx.createGain(); g.connect(master);
+  const times = m.kind === 'event' ? [0, 0.13] : [0];
+  const src = ctx.createOscillator(); src.type = 'triangle'; src.frequency.value = f; src.connect(g);
+  g.gain.setValueAtTime(0.0001, t);
+  for (const dt of times){
+    g.gain.exponentialRampToValueAtTime(0.25, t + dt + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dt + (m.kind === 'event' ? 0.1 : 0.3));
   }
+  src.start(t); src.stop(t + 0.45);
+  playing = {key:m.key, src, g};
 }
 
-function swoosh(){
-  const t = ctx.currentTime, len = 0.45;
-  const b = ctx.createBuffer(1, Math.round(ctx.sampleRate*len), ctx.sampleRate), d = b.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = Math.random()*2 - 1;
-  const src = ctx.createBufferSource(); src.buffer = b;
-  const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2;
-  bp.frequency.setValueAtTime(300, t); bp.frequency.exponentialRampToValueAtTime(5000, t + len*0.8);
-  const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
-  src.connect(bp); bp.connect(g); g.connect(comp); src.start(t); src.stop(t + len);
-}
+async function decode(arrayBuffer){ return ctx.decodeAudioData(arrayBuffer.slice(0)); }
 
-async function loadSoundFile(i, file){
-  ensureCtx();
-  try{
-    slots[i].buffer = await ctx.decodeAudioData(await file.arrayBuffer());
-    slots[i].name = file.name.replace(/\.[^.]+$/, '').slice(0, 24); slots[i].file = file.name;
-    saveSlots();
-    if (started) startSlot(i);
-    logApp(`sound ${i + 1} loaded from ${file.name}`);
-    drawSlots();
-  }catch(e){ setStatus('Could not read ' + file.name + '. Try a WAV or MP3.'); }
-}
-function saveSlots(){ save('slots', slots.map(s => ({name:s.name, color:s.color}))); }
-
-// ---------- the 4 built-in sounds, made once when you press Start ----------
-async function render(fn){ const oc = new OfflineAudioContext(2, SR*LOOP_SEC, SR); fn(oc); return oc.startRendering(); }
-function noise(oc, sec, brown){
-  const b = oc.createBuffer(1, Math.round(oc.sampleRate*sec), oc.sampleRate), d = b.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < d.length; i++){ const w = Math.random()*2 - 1; if (brown){ last = (last + 0.02*w)/1.02; d[i] = last*3.5; } else d[i] = w; }
-  return b;
-}
-function chain(oc, nodes){ for (let i = 0; i < nodes.length - 1; i++) nodes[i].connect(nodes[i+1]); nodes[nodes.length-1].connect(oc.destination); return nodes[0]; }
-function filt(oc, type, f, q){ const n = oc.createBiquadFilter(); n.type = type; n.frequency.value = f; if (q) n.Q.value = q; return n; }
-function gainNode(oc, v){ const g = oc.createGain(); g.gain.value = v; return g; }
-function pan(oc, p){ const n = oc.createStereoPanner(); n.pan.value = p; return n; }
-function burst(oc, nb, t, dur, peak, filterType, freq, q, p){
-  const s = oc.createBufferSource(); s.buffer = nb;
-  const g = oc.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + 0.001); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  chain(oc, [s, filt(oc, filterType, freq, q), g, pan(oc, p)]);
-  s.start(t, Math.random()*0.5); s.stop(t + dur + 0.01);
-}
-// blend the end into the start so the loop has no click
-function loopable(buf){
-  const N = Math.round(0.3*buf.sampleRate), L = buf.length - N;
-  const out = new AudioBuffer({numberOfChannels:buf.numberOfChannels, length:L, sampleRate:buf.sampleRate});
-  for (let c = 0; c < buf.numberOfChannels; c++){
-    const s = buf.getChannelData(c), d = out.getChannelData(c);
-    d.set(s.subarray(0, L));
-    for (let i = 0; i < N; i++){ const a = Math.sin(i/N*Math.PI/2), b = Math.cos(i/N*Math.PI/2); d[i] = s[i]*a + s[L+i]*b; }
-  }
-  return out;
-}
-const R = Math.random;
-async function buildDefaultSounds(){
-  const rain = await render(oc => {
-    const nb = noise(oc, LOOP_SEC + 1);
-    const s = oc.createBufferSource(); s.buffer = nb;
-    chain(oc, [s, filt(oc,'highpass',500), filt(oc,'lowpass',3500), gainNode(oc,0.3)]); s.start(0);
-    const short = noise(oc, 1);
-    for (let i = 0; i < 900; i++) burst(oc, short, R()*LOOP_SEC, 0.008 + R()*0.03, 0.04 + R()*R()*0.35, 'bandpass', 1500 + R()*5500, 1.5, R()*2 - 1);
-  });
-  const ocean = await render(oc => {
-    const curve = (fn) => { const c = new Float32Array(800); for (let k = 0; k < c.length; k++){ const t = k/(c.length-1)*LOOP_SEC; c[k] = fn((t % 4)/4); } return c; };
-    [[-0.5, 0], [0.5, 0.5]].forEach(([p, off]) => {
-      const s1 = oc.createBufferSource(); s1.buffer = noise(oc, LOOP_SEC + 1);
-      const g1 = oc.createGain(); g1.gain.setValueCurveAtTime(curve(ph => 0.06 + 0.55*Math.pow(Math.sin(Math.PI*((ph + off/4) % 1)), 2)), 0, LOOP_SEC);
-      chain(oc, [s1, filt(oc,'lowpass',650), g1, pan(oc, p)]); s1.start(0);
-      const s2 = oc.createBufferSource(); s2.buffer = noise(oc, LOOP_SEC + 1);
-      const g2 = oc.createGain(); g2.gain.setValueCurveAtTime(curve(ph => 0.01 + 0.22*Math.pow(Math.max(0, Math.sin(Math.PI*((ph + off/4 + 0.85) % 1))), 6)), 0, LOOP_SEC);
-      chain(oc, [s2, filt(oc,'bandpass',2600,0.7), g2, pan(oc, p)]); s2.start(0);
+// Dropped files are kept in this browser (IndexedDB) so they come back next time.
+const store = {
+  db: null,
+  open(){
+    if (this.db) return Promise.resolve(this.db);
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('shoe-sounds', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('sounds');
+      r.onsuccess = () => res(this.db = r.result); r.onerror = () => rej(r.error);
     });
-  });
-  const chimes = await render(oc => {
-    const notes = [72, 74, 76, 79, 81, 84, 86, 88];
-    const s = oc.createBufferSource(); s.buffer = noise(oc, LOOP_SEC + 1);
-    chain(oc, [s, filt(oc,'lowpass',400), gainNode(oc,0.05)]); s.start(0);
-    for (let i = 0; i < 18; i++){
-      const t = 0.05 + R()*(LOOP_SEC - 0.6), f = 440*Math.pow(2, (notes[Math.floor(R()*notes.length)] - 69)/12), p = R()*1.6 - 0.8;
-      [[1, 1], [2.76, 0.35], [5.4, 0.15]].forEach(([mult, amp]) => {
-        const o = oc.createOscillator(); o.frequency.value = f*mult;
-        const g = oc.createGain(); const dec = 2.8/mult;
-        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.13*amp, t + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t + dec);
-        chain(oc, [o, g, pan(oc, p)]); o.start(t); o.stop(t + dec + 0.05);
-      });
+  },
+  async tx(mode, fn){
+    const db = await this.open();
+    return new Promise((res, rej) => { const t = db.transaction('sounds', mode); const out = fn(t.objectStore('sounds')); t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error); });
+  },
+  put(key, v){ return this.tx('readwrite', s => s.put(v, key)); },
+  del(key){ return this.tx('readwrite', s => s.delete(key)); },
+  async all(){
+    const db = await this.open();
+    return new Promise((res, rej) => {
+      const out = {}, r = db.transaction('sounds').objectStore('sounds').openCursor();
+      r.onsuccess = () => { const c = r.result; if (c){ out[c.key] = c.value; c.continue(); } else res(out); };
+      r.onerror = () => rej(r.error);
+    });
+  },
+};
+
+async function setSlotFile(key, file){
+  try{
+    const data = await file.arrayBuffer();
+    const buffer = await decode(data);
+    Object.assign(slots[key], {buffer, label:file.name, from:'dropped'});
+    store.put(key, {name:file.name, data}).catch(() => setStatus('Could not save the sound in this browser (it still works until you reload).'));
+    logApp(`${MOVE[key].n} ${MOVE[key].name}: loaded ${file.name}`);
+    afterSlotChange(key);
+  }catch(e){ setStatus(`Could not read ${file.name}. Try a WAV or MP3.`); }
+}
+function clearSlot(key){
+  const s = slots[key];
+  if (s.from === 'dropped'){ store.del(key).catch(() => {}); }
+  Object.assign(s, s.folderBuffer ? {buffer:s.folderBuffer, label:s.folderLabel, from:'folder'} : {buffer:null, label:'', from:''});
+  logApp(`${MOVE[key].n} ${MOVE[key].name}: ${s.buffer ? 'back to ' + s.label : 'emptied'}`);
+  afterSlotChange(key);
+}
+function afterSlotChange(key){
+  drawSlot(key);
+  if (det.current.key === key) playMovement(det.current);
+}
+
+// Several files dropped on the box: match by number (05-...) or by name (jump, toe tap...)
+function slotForFileName(name){
+  const base = name.toLowerCase().replace(/\.[^.]+$/, '');
+  const num = base.match(/^(\d{1,2})(?!\d)/);
+  if (num){ const m = MOVES.find(x => x.n === +num[1]); if (m) return m.key; }
+  const flat = base.replace(/[^a-z]/g, '');
+  const m = MOVES.find(x => flat.includes(x.key)) || MOVES.find(x => flat.includes(x.name.toLowerCase().replace(/[^a-z]/g, '')));
+  return m ? m.key : null;
+}
+
+async function loadSavedSounds(){
+  // folder first, then dropped ones on top
+  await Promise.all(MOVES.map(async m => {
+    for (const ext of SOUND_EXTS){
+      const path = SOUND_FOLDER + soundFileBase(m) + '.' + ext;
+      try{
+        const r = await fetch(path, {cache:'no-store'});
+        if (!r.ok) continue;
+        const buffer = await decode(await r.arrayBuffer());
+        Object.assign(slots[m.key], {folderBuffer:buffer, folderLabel:path});
+        if (!slots[m.key].buffer) Object.assign(slots[m.key], {buffer, label:path, from:'folder'});
+        logApp(`${m.n} ${m.name}: found ${path}`);
+        break;
+      }catch(e){ /* not there (or opened from file://) */ }
     }
-  });
-  const fire = await render(oc => {
-    const s = oc.createBufferSource(); s.buffer = noise(oc, LOOP_SEC + 1, true);
-    chain(oc, [s, filt(oc,'lowpass',500), gainNode(oc,0.55)]); s.start(0);
-    const short = noise(oc, 1);
-    for (let i = 0; i < 380; i++) burst(oc, short, R()*LOOP_SEC, 0.002 + R()*0.012, 0.03 + Math.pow(R(), 3)*0.6, 'bandpass', 800 + R()*3500, 2, R()*1.2 - 0.6);
-    for (let i = 0; i < 14; i++) burst(oc, short, R()*LOOP_SEC, 0.04, 0.5, 'lowpass', 1500, 0.7, R() - 0.5);
-  });
-  return [rain, ocean, chimes, fire].map(loopable);
+  }));
+  try{
+    const saved = await store.all();
+    for (const [key, v] of Object.entries(saved)){
+      if (!slots[key]) continue;
+      try{ Object.assign(slots[key], {buffer:await decode(v.data), label:v.name, from:'dropped'}); }catch(e){}
+    }
+  }catch(e){}
+  MOVES.forEach(m => drawSlot(m.key));
 }
 
 // ===================== play view =====================
 function buildPlay(){
-  $('slots').innerHTML = slots.map((s, i) => `
-    <div class="slot" id="slot${i}">
-      <div class="top"><span class="n">${i + 1}</span><span class="name" id="slotName${i}"></span>
-        <input type="color" id="slotColor${i}" title="Color for this sound (the color sensor will use this in the next version)"></div>
+  $('slots').innerHTML = MOVES.map(m => `
+    <div class="slot" id="slot-${m.key}" data-slot="${m.key}">
+      <div class="top"><span class="n">${m.n}</span><span class="name">${m.name}</span>
+        <span class="kind">${m.kind === 'event' ? 'quick' : 'lasting'}${m.feet === 2 ? ' · <span class="two">both shoes</span>' : ''}</span></div>
+      <div class="how">${m.how}</div>
+      <div class="file empty" data-k="file">empty: drop a sound here</div>
+      <div class="opts"><label title="play the sound over and over while the movement lasts"><input type="checkbox" data-k="loop"> loop</label>
+        <input type="range" min="0" max="100" data-k="vol" title="volume of this sound"><span class="count" data-k="count">0×</span></div>
       <div class="btns" style="margin-top:2px">
-        <button class="small" data-pick="${i}">Play this</button>
-        <label class="file">Load file<input type="file" accept="audio/*" data-file="${i}"></label>
+        <button class="small" data-k="test" title="pretend this movement happened">Test</button>
+        <button class="small" data-k="choose">Choose</button><input type="file" accept="audio/*" data-k="input">
+        <button class="small" data-k="clear">Clear</button>
       </div>
-      <div class="num" style="text-align:left" id="slotFile${i}">built-in</div>
     </div>`).join('');
-  document.querySelectorAll('[data-pick]').forEach(b => b.onclick = () => selectSound(+b.dataset.pick, 'clicked'));
-  document.querySelectorAll('[data-file]').forEach(el => el.onchange = e => { if (e.target.files[0]) loadSoundFile(+el.dataset.file, e.target.files[0]); });
-  slots.forEach((s, i) => { const c = $('slotColor'+i); c.value = s.color; c.oninput = () => { s.color = c.value; saveSlots(); drawSlots(); }; });
+  for (const m of MOVES){
+    const el = $('slot-' + m.key), q = k => el.querySelector(`[data-k="${k}"]`), s = slots[m.key];
+    q('test').onclick = () => { det.test(m.key, performance.now()); if (!started) setStatus('Press Start sound to hear it.'); };
+    q('choose').onclick = () => q('input').click();
+    q('input').onchange = e => { if (e.target.files[0]) setSlotFile(m.key, e.target.files[0]); e.target.value = ''; };
+    q('clear').onclick = () => clearSlot(m.key);
+    q('loop').checked = s.loop; q('loop').onchange = () => { s.loop = q('loop').checked; saveSlotOpts(); if (playing && playing.key === m.key && playing.src.loop !== undefined) playing.src.loop = s.loop; };
+    q('vol').value = s.vol; q('vol').oninput = () => { s.vol = +q('vol').value; saveSlotOpts(); if (playing && playing.key === m.key) playing.g.gain.value = s.vol/100; };
+    el.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); el.classList.add('drag'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag'));
+    el.addEventListener('drop', e => {
+      e.preventDefault(); e.stopPropagation(); el.classList.remove('drag');
+      const files = [...e.dataTransfer.files];
+      if (files.length === 1) setSlotFile(m.key, files[0]);
+      else dropMany(files);
+    });
+    drawSlot(m.key);
+  }
+  const panel = $('slotsPanel');
+  panel.addEventListener('dragover', e => e.preventDefault());
+  panel.addEventListener('drop', e => { e.preventDefault(); dropMany([...e.dataTransfer.files]); });
+  // a file dropped anywhere else must not make the browser leave the page
+  addEventListener('dragover', e => e.preventDefault());
+  addEventListener('drop', e => e.preventDefault());
 
   for (const id of ['L','R']){
     $('foot'+id).innerHTML = `
-      <h2><span class="dot" id="pdot${id}"></span> ${FOOT_NAME[id]} shoe <span class="tag" id="plink${id}">simulator</span></h2>
-      <div class="footrow"><span class="badge big" id="pstate${id}">STILL</span>
-        <span class="help" id="pinfo${id}"></span></div>
-      <h3 style="margin-top:12px">Simulator (used when this shoe isn't connected)</h3>
-      <div class="btns sim" id="psim${id}">
-        <button data-sim="0" data-foot="${id}">Still</button><button data-sim="1" data-foot="${id}">Walk</button>
-        <button data-sim="2" data-foot="${id}">Run</button><button data-sim="spin" data-foot="${id}">Spin 360</button>
+      <h2><span class="dot" id="pdot${id}"></span> ${FOOT_NAME[id]} shoe <span class="tag" id="plink${id}">not connected</span></h2>
+      <div class="footrow"><span class="badge big" id="pstate${id}">-</span><span class="badge" id="ppose${id}" style="background:#3a404d;color:var(--text)">-</span></div>
+      <div class="kv" style="margin-top:8px">
+        <span>Pressure (raw, 0-4095)</span><b><span class="bar" style="display:inline-block;width:90px;vertical-align:middle;margin-right:6px"><i id="pfsrBar${id}" style="--c:var(--${id})"></i></span><span id="pfsr${id}">-</span></b>
+        <span>Foot down</span><b><span class="lamp" id="pdown${id}"></span></b>
+        <span>Tilt (pitch / roll)</span><b id="ptilt${id}">-</b>
+        <span>Last one-foot event</span><b id="pev${id}">-</b>
+        <span>Air time before last step</span><b id="pair${id}">-</b>
+        <span>Steps / spins</span><b id="pcount${id}">-</b>
       </div>`;
   }
-  document.querySelectorAll('[data-sim]').forEach(b => b.onclick = () => simSet(b.dataset.foot, b.dataset.sim));
 
-  const rt = $('requireTurns'); rt.checked = requireTurns;
-  rt.onchange = () => { requireTurns = rt.checked; save('requireTurns', requireTurns); logApp(requireTurns ? 'feet must take turns' : 'feet no longer need to take turns'); };
-  for (const k of ['walk','run']){
-    const el = $(k+'Vol'), n = $(k+'VolN'); el.value = vol[k]; n.textContent = vol[k] + '%';
-    el.oninput = () => { vol[k] = +el.value; n.textContent = vol[k] + '%'; save(k+'Vol', vol[k]); };
+  const rt = $('requireTurns'); rt.checked = det.requireTurns;
+  rt.onchange = () => { det.requireTurns = rt.checked; save('requireTurns', rt.checked); logApp(rt.checked ? 'feet must take turns to walk' : 'feet no longer need to take turns'); };
+  const be = $('beepEmpty'); be.checked = beepEmpty;
+  be.onchange = () => { beepEmpty = be.checked; save('beepEmpty', beepEmpty); };
+  const mv = $('masterVol'); mv.value = masterVol; $('masterVolN').textContent = masterVol + '%';
+  mv.oninput = () => { masterVol = +mv.value; $('masterVolN').textContent = masterVol + '%'; master.gain.setTargetAtTime(masterVol/100, ctx.currentTime, 0.03); save('masterVol', masterVol); };
+  $('clearAll').onclick = () => { MOVES.forEach(m => { if (slots[m.key].from === 'dropped') clearSlot(m.key); }); };
+}
+
+function dropMany(files){
+  let matched = 0;
+  for (const f of files){
+    const key = slotForFileName(f.name);
+    if (key){ setSlotFile(key, f); matched++; }
+    else logApp(`could not tell which movement "${f.name}" is for. Name it like 05-jump.wav, or drop it on a slot.`);
   }
-  drawSlots();
+  setStatus(`${matched} of ${files.length} sounds matched to a movement.`);
 }
 
-function simSet(id, what){
-  const f = feet[id];
-  if (what === 'spin'){ f.sim.spinUntil = performance.now() + 700; f.sim.spins++; logEvent(id, `${FOOT_NAME[id]} simulator: SPIN`); onSpin(id); return; }
-  f.sim.state = +what;
-  logEvent(id, `${FOOT_NAME[id]} simulator: ${STATES[f.sim.state]}`);
+function drawSlot(key){
+  const s = slots[key], el = $('slot-' + key); if (!el) return;
+  const file = el.querySelector('[data-k="file"]');
+  el.classList.toggle('filled', !!s.buffer);
+  file.classList.toggle('empty', !s.buffer);
+  file.textContent = s.buffer ? `${s.from === 'folder' ? '📁 ' : ''}${s.label}` : 'empty: drop a sound here';
+  file.title = s.buffer ? `${s.label} (${s.buffer.duration.toFixed(1)} s, ${s.from === 'folder' ? 'from the sounds folder' : 'dropped, saved in this browser'})` : '';
 }
 
-function drawSlots(){
-  slots.forEach((s, i) => {
-    $('slot'+i).classList.toggle('on', i === active);
-    $('slotName'+i).textContent = s.name;
-    $('slotFile'+i).textContent = s.file ? s.file : (s.buffer ? 'built-in' : 'built-in (made on Start)');
-  });
-  $('nowName').textContent = slots[active].name;
-  $('nowSlot').textContent = `sound ${active + 1} of 4`;
-  $('nowSwatch').style.background = slots[active].color;
-}
-
+let lastShownId = -1;
 function drawPlay(){
-  const now = performance.now(), st = overallState(now), spinning = anySpinning(now);
-  const shown = spinning ? SPIN : st;
-  const b = $('nowState'); b.textContent = STATES[shown]; b.className = 'badge big s' + shown;
-  const g = started ? master.gain.value : 0;
-  $('nowVolBar').style.width = clamp(g, 0, 1)*100 + '%';
-  const turning = feetTakingTurns(now);
-  if (turning !== wasTurning && usingTurns(now)) logEvent(null, turning ? 'feet are taking turns: walking' : 'feet stopped taking turns');
-  wasTurning = turning;
-  $('nowTurns').textContent = usingTurns(now)
-    ? `left/right turns in the last 3 s: ${recentTurns(now)} (need ${TURNS_NEEDED})`
-    : (isLive(feet.L, now) || isLive(feet.R, now)) ? 'one shoe connected: its own steps count' : '';
-  $('nowVolTxt').textContent = !started ? 'Press Start sound' : paused ? 'paused (no movement)' :
-    `${Math.round(g*100)}%` + (st === RUN ? ' (running)' : st === WALK ? ' (walking)' : ' (fading out)');
+  const now = performance.now(), cur = det.current, m = MOVE[cur.key], s = slots[cur.key];
+  if (cur.id !== lastShownId){
+    lastShownId = cur.id;
+    $('nowMove').innerHTML = `<span class="n">${m.n}</span>${m.name}`;
+    document.querySelectorAll('.slot').forEach(el => el.classList.toggle('on', el.dataset.slot === cur.key));
+    if (m.kind === 'event'){ const fl = $('flash'); fl.classList.add('on'); setTimeout(() => fl.classList.remove('on'), 80); }
+  }
+  $('nowWhy').textContent = cur.why || '';
+  $('nowSound').textContent = !started ? 'Press Start sound' : s.buffer ? `${s.label}${s.loop ? ' (looping)' : ''}` : (beepEmpty && cur.key !== 'still' ? 'empty slot: test beep' : 'empty slot: silence');
+  for (const mv of MOVES){ const c = document.querySelector(`#slot-${mv.key} [data-k="count"]`); if (c) c.textContent = det.counts[mv.key] + '×'; }
   for (const id of ['L','R']){
-    const f = feet[id], live = isLive(f, now), s = footState(f, now);
+    const f = feet[id], d = f.d, live = isLive(f, now);
     $('pdot'+id).classList.toggle('live', live);
-    $('plink'+id).textContent = live ? `${f.src}, ${f.rate}/s` : 'simulator';
-    const pb = $('pstate'+id); pb.textContent = STATES[s] || '?'; pb.className = 'badge big s' + s;
-    $('pinfo'+id).textContent = live ? `steps ${f.d.steps}, spins ${f.d.spins}` : '';
-    $('psim'+id).style.opacity = live ? .4 : 1;
-    $('psim'+id).querySelectorAll('[data-sim]').forEach(btn => btn.classList.toggle('on', !live && btn.dataset.sim === String(f.sim.state)));
+    $('plink'+id).textContent = live ? `${f.src}, ${f.rate}/s` : (f.lastLive ? 'stopped sending' : 'not connected');
+    const pb = $('pstate'+id); pb.textContent = live ? (GAIT_NAMES[d.state] || '?') : '-'; pb.className = 'badge big' + (live ? ' s' + d.state : '');
+    $('ppose'+id).textContent = live ? (POSE_NAMES[d.pose] || '?') : '-';
+    $('pfsr'+id).textContent = live ? d.fsr : '-';
+    $('pfsrBar'+id).style.width = (live ? clamp(d.fsr / 4095, 0, 1) * 100 : 0) + '%';
+    $('pdown'+id).className = 'lamp' + (live && (d.flags & 2) ? ' on' : '');
+    $('ptilt'+id).textContent = live ? `${d.pitch}° / ${d.roll}°` : '-';
+    $('pev'+id).textContent = live && d.events ? `${EVENT_NAMES[d.event] || d.event} (#${d.events})` : '-';
+    $('pair'+id).textContent = live && d.steps ? `${d.air10*10} ms` : '-';
+    $('pcount'+id).textContent = live ? `${d.steps} / ${d.spins}` : '-';
   }
 }
 
 // ===================== monitor =====================
 const M = {};   // monitor elements, kept so they keep working when popped out
 const PLOT_SERIES = [
-  {k:'fsr',  name:'pressure',     color:'#3fd0c0', scale:v => v/4095},
-  {k:'down', name:'foot down',    color:'#4cc38a', scale:v => v*0.15 - 1},
-  {k:'yaw',  name:'turning',      color:'#a58bff', scale:v => v/720},
-  {k:'gyro', name:'rotation',     color:'#f5a54a', scale:v => v/1000},
-  {k:'g',    name:'accel (g)',    color:'#e9ebf1', scale:v => v/4},
+  {k:'fsr',   name:'pressure',   color:'#3fd0c0', scale:v => v/4095},
+  {k:'down',  name:'foot down',  color:'#4cc38a', scale:v => v*0.15 - 1},
+  {k:'yaw',   name:'turning',    color:'#a58bff', scale:v => v/720},
+  {k:'gyro',  name:'rotation',   color:'#f5a54a', scale:v => v/1000},
+  {k:'g',     name:'peak g',     color:'#e9ebf1', scale:v => v/8},
+  {k:'pitch', name:'pitch',      color:'#f2c94c', scale:v => v/90},
 ];
-const plotOn = load('plotOn', {fsr:true, down:true, yaw:true, gyro:false, g:true});
+const plotOn = Object.assign({fsr:true, down:true, yaw:true, gyro:false, g:true, pitch:true}, load('plotOn', {}));
 
 function buildMonitor(){
   for (const id of ['L','R']){
@@ -567,27 +597,27 @@ function buildMonitor(){
       <div class="comps">
         <div class="comp" data-k="cLink"><h3>Link</h3><div class="kv">
           <span>From</span><b data-k="src">-</b><span>Packets / s</span><b data-k="rate">0</b>
-          <span>Last data</span><b data-k="age">never</b><span>XIAO answering</span><b><span class="lamp" data-k="xiao"></span> <span data-k="xiaoTxt"></span></b></div></div>
-        <div class="comp" data-k="cFsr"><h3>Pressure sensor (A0)</h3>
+          <span>Last data</span><b data-k="age">never</b></div></div>
+        <div class="comp" data-k="cFsr"><h3>Pressure sensor (D0)</h3>
           <div class="row"><span>Pressure</span><div class="bar"><i data-k="fsrBar" style="--c:var(--${id})"></i></div><span class="num" data-k="fsr">0</span></div>
-          <div class="kv"><span>Foot down</span><b><span class="lamp" data-k="down"></span></b></div></div>
+          <div class="kv"><span>Foot down</span><b><span class="lamp" data-k="down"></span></b><span>Touching</span><b><span class="lamp" data-k="touch"></span></b></div></div>
         <div class="comp wide" data-k="cImu"><h3>Gyro board (MPU-6050) <span class="lamp" data-k="imuOk"></span> <span data-k="imuTxt" style="text-transform:none;letter-spacing:0"></span></h3>
           <div class="comps" style="gap:0 16px">
             <div>
-              <div class="row"><span>accel x</span><div class="bar signed"><i data-k="axBar"></i></div><span class="num" data-k="ax">0</span></div>
-              <div class="row"><span>accel y</span><div class="bar signed"><i data-k="ayBar"></i></div><span class="num" data-k="ay">0</span></div>
-              <div class="row"><span>accel z</span><div class="bar signed"><i data-k="azBar"></i></div><span class="num" data-k="az">0</span></div>
+              <div class="row"><span>pitch</span><div class="bar signed"><i data-k="pitchBar" style="--c:#f2c94c"></i></div><span class="num" data-k="pitch">0</span></div>
+              <div class="row"><span>roll</span><div class="bar signed"><i data-k="rollBar" style="--c:#f2c94c"></i></div><span class="num" data-k="roll">0</span></div>
+              <div class="row"><span>peak g</span><div class="bar"><i data-k="gBar"></i></div><span class="num" data-k="g">0</span></div>
             </div><div>
-              <div class="row"><span>total g</span><div class="bar"><i data-k="gBar"></i></div><span class="num" data-k="g">0</span></div>
               <div class="row"><span>rotation</span><div class="bar"><i data-k="gyroBar" style="--c:#f5a54a"></i></div><span class="num" data-k="gyro">0</span></div>
               <div class="row"><span>turning</span><div class="bar signed"><i data-k="yawBar" style="--c:var(--spin)"></i></div><span class="num" data-k="yaw">0</span></div>
+              <div class="kv" style="margin-top:6px"><span>Pose</span><b data-k="pose">-</b></div>
             </div></div></div>
         <div class="comp" data-k="cSteps"><h3>Step detector</h3><div class="kv">
           <span>Steps</span><b data-k="steps">0</b><span>Time between steps</span><b data-k="stepMs">-</b>
-          <span>Pace (run: over 75)</span><b data-k="pace">-</b></div></div>
-        <div class="comp" data-k="cSpin"><h3>Spin detector</h3>
-          <div class="row"><span>Progress</span><div class="bar"><i data-k="spinBar" style="--c:var(--spin)"></i></div><span class="num" data-k="spinPct">0%</span></div>
-          <div class="kv"><span>Spins</span><b data-k="spins">0</b></div></div>
+          <span>In the air before</span><b data-k="air">-</b><span>Pace (run: over 75)</span><b data-k="pace">-</b></div></div>
+        <div class="comp" data-k="cSpin"><h3>Spin and events</h3>
+          <div class="row"><span>Spin</span><div class="bar"><i data-k="spinBar" style="--c:var(--spin)"></i></div><span class="num" data-k="spinPct">0%</span></div>
+          <div class="kv"><span>Spins</span><b data-k="spins">0</b><span>Last event</span><b data-k="ev">-</b></div></div>
         <div class="comp wide"><h3>Last 10 seconds</h3><canvas class="plot" data-k="plot"></canvas>
           <div class="legend" data-k="legend"></div></div>
       </div>`;
@@ -619,32 +649,33 @@ function drawMonitor(){
   if (!monitorVisible()) return;
   const now = performance.now();
   for (const id of ['L','R']){
-    const f = feet[id], r = M[id], d = f.d, live = isLive(f, now), s = footState(f, now), any = f.lastLive > 0;
+    const f = feet[id], r = M[id], d = f.d, live = isLive(f, now), any = f.lastLive > 0;
     r.dot.classList.toggle('live', live);
-    r.state.textContent = (live ? '' : 'sim ') + (STATES[s] || '?'); r.state.className = 'badge s' + s;
+    r.state.textContent = live ? (GAIT_NAMES[d.state] || '?') : '-'; r.state.className = 'badge' + (live ? ' s' + d.state : '');
     r.src.textContent = live ? f.src : (any ? `${f.src} (stopped)` : 'nothing yet');
     r.rate.textContent = f.rate;
     r.age.textContent = any ? (now - f.lastLive < 1000 ? `${Math.round(now - f.lastLive)} ms ago` : `${((now - f.lastLive)/1000).toFixed(1)} s ago`) : 'never';
-    const xiaoKnown = f.src === 'USB', xiaoOk = (d.flags & 4) !== 0;
-    r.xiao.className = 'lamp' + (!any ? '' : (f.src === 'Bluetooth' || xiaoOk) ? ' on' : ' bad');
-    r.xiaoTxt.textContent = !any ? '' : f.src === 'Bluetooth' ? 'yes' : xiaoKnown ? (xiaoOk ? 'yes' : 'no: check D4/D5') : '';
     for (const c of ['cLink','cFsr','cImu','cSteps','cSpin']) r[c].classList.toggle('off', !live);
 
     setBar(r.fsrBar, d.fsr/4095); r.fsr.textContent = d.fsr;
     r.down.className = 'lamp' + ((d.flags & 2) ? ' on' : '');
+    r.touch.className = 'lamp' + ((d.flags & 8) ? ' on' : '');
     const imuOk = (d.flags & 1) !== 0;
     r.imuOk.className = 'lamp' + (!any ? '' : imuOk ? ' on' : ' bad');
     r.imuTxt.textContent = !any ? '' : imuOk ? 'found' : 'NOT FOUND: check SDA/SCL/VCC';
-    for (const a of ['ax','ay','az']){ setBar(r[a+'Bar'], d[a]/200, true); r[a].textContent = (d[a]/100).toFixed(2); }
-    const g = Math.hypot(d.ax, d.ay, d.az)/100;
-    setBar(r.gBar, g/4); r.g.textContent = g.toFixed(2);
+    setBar(r.pitchBar, d.pitch/90, true); r.pitch.textContent = d.pitch + '°';
+    setBar(r.rollBar, d.roll/90, true); r.roll.textContent = d.roll + '°';
+    setBar(r.gBar, d.peakG/8); r.g.textContent = d.peakG.toFixed(1);
     setBar(r.gyroBar, d.gyro/1000); r.gyro.textContent = d.gyro + '°/s';
     setBar(r.yawBar, d.yaw/720, true); r.yaw.textContent = d.yaw + '°/s';
+    r.pose.textContent = POSE_NAMES[d.pose] || d.pose;
     r.steps.textContent = d.steps;
     r.stepMs.textContent = d.stepMs ? d.stepMs + ' ms' : '-';
+    r.air.textContent = d.steps ? d.air10*10 + ' ms' : '-';
     r.pace.textContent = d.stepMs ? `${Math.round(60000/d.stepMs)} / min` : '-';
     setBar(r.spinBar, d.spinPct/100); r.spinPct.textContent = d.spinPct + '%';
     r.spins.textContent = d.spins;
+    r.ev.textContent = d.events ? `${EVENT_NAMES[d.event] || d.event} (#${d.events})` : '-';
     drawPlot(r.plot, f.hist, now);
   }
   renderLog();
@@ -752,41 +783,56 @@ function setStatus(t){ $('status').textContent = t; statusMsgUntil = performance
 function updateStatus(){
   if (performance.now() < statusMsgUntil) return;
   const live = ['L','R'].filter(id => isLive(feet[id])).map(id => FOOT_NAME[id]);
-  $('status').textContent = (live.length ? live.join(' + ') + ' shoe live. ' : 'No shoes live, simulator is driving. ') +
-    (!started ? 'Press Start sound.' : paused ? 'Sound paused.' : 'Sound playing.');
+  $('status').textContent = (live.length === 2 ? 'Both shoes live. ' : live.length ? `${live[0]} shoe live (connect both for jump, hop, skip, lunge, dancer's pose, sky). ` : 'No shoes live: use the Test buttons. ') +
+    (!started ? 'Press Start sound.' : 'Sound on.');
 }
 setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; feet[id].pkts = 0; } updateStatus(); }, 1000);
 
 // ===================== Bluetooth (one per shoe) =====================
+const bleDevs = {L:null, R:null};
 async function connectBLE(id){
   if (!navigator.bluetooth){ setStatus('Bluetooth needs Chrome or Edge, opened from localhost or https.'); return; }
   try{
-    setStatus(`Pick "MusicShoe-${id}" in the popup...`);
-    const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}], optionalServices:[SERVICE_UUID]});
-    let ch = null;
+    setStatus(`Pick "MusicShoe-${id}" in the popup. Not there? Any shoe in the list will do (macOS can show an old name): the app asks the shoe which foot it is.`);
+    // Either filter is enough: the name, or the shoe's service (macOS can show a stale cached name)
+    const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}, {services:[SERVICE_UUID]}], optionalServices:[SERVICE_UUID]});
+    let foot = id, ch = null;
     const onData = e => {
       const v = e.target.value;
-      if (v.byteLength >= 20) ingest(id, decodePacket(v), 'Bluetooth');
-      else logDbg(id, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running the new xiao_radio?`);
+      if (v.byteLength >= 20) ingest(foot, decodePacket(v), 'Bluetooth');
+      else logDbg(foot, `Bluetooth packet was ${v.byteLength} bytes, expected 20. Is the XIAO running xiao_foot?`);
     };
     const run = async () => {
       if (ch) ch.removeEventListener('characteristicvaluechanged', onData);
       const server = await dev.gatt.connect();
       const svc = await server.getPrimaryService(SERVICE_UUID);
+      try{
+        let said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim();
+        if (said === 'L' || said === 'R'){
+          const other = bleDevs[said] && bleDevs[said] !== dev && isLive(feet[said]);
+          if (other && said !== id){
+            logApp(`both shoes say they are the ${FOOT_NAME[said].toLowerCase()} shoe, so "${dev.name || 'unnamed'}" is used as the ${FOOT_NAME[id].toLowerCase()} shoe. Set FOOT to '${id}' in config.h and upload to that shoe again.`);
+            setStatus(`Both shoes say ${FOOT_NAME[said]}. Upload the ${FOOT_NAME[id].toLowerCase()} shoe again with FOOT '${id}'.`);
+            said = id;
+          } else if (said !== foot) logApp(`"${dev.name || 'unnamed'}" says it is the ${FOOT_NAME[said].toLowerCase()} shoe, so it's used as the ${FOOT_NAME[said].toLowerCase()} shoe`);
+          foot = said;
+        }
+        bleDevs[foot] = dev;
+      }catch(e){ logApp(`"${dev.name || 'unnamed'}" doesn't say which foot it is (older firmware), using it as the ${FOOT_NAME[foot].toLowerCase()} shoe`); }
       ch = await svc.getCharacteristic(DATA_UUID);
       ch.addEventListener('characteristicvaluechanged', onData);
       await ch.startNotifications();
-      setStatus(`${FOOT_NAME[id]} shoe connected.`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe connected by Bluetooth (${dev.name})`);
+      setStatus(`${FOOT_NAME[foot]} shoe connected.`); logApp(`${FOOT_NAME[foot].toLowerCase()} shoe connected by Bluetooth (listed as "${dev.name || 'unnamed'}")`);
     };
     dev.addEventListener('gattserverdisconnected', () => {
-      setStatus(`${FOOT_NAME[id]} shoe dropped, reconnecting...`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe Bluetooth dropped, reconnecting`);
-      setTimeout(() => run().catch(() => { setStatus(`${FOOT_NAME[id]} shoe lost. Click Connect again.`); logApp(`${FOOT_NAME[id].toLowerCase()} shoe lost`); }), 800);
+      setStatus(`${FOOT_NAME[foot]} shoe dropped, reconnecting...`); logApp(`${FOOT_NAME[foot].toLowerCase()} shoe Bluetooth dropped, reconnecting`);
+      setTimeout(() => run().catch(() => { setStatus(`${FOOT_NAME[foot]} shoe lost. Click Connect again.`); logApp(`${FOOT_NAME[foot].toLowerCase()} shoe lost`); }), 800);
     });
     await run();
   }catch(e){ setStatus(e.name === 'NotFoundError' ? 'No shoe picked.' : 'Bluetooth error: ' + e.message); }
 }
 
-// ===================== USB (Minima plugged in) =====================
+// ===================== USB (a XIAO plugged in) =====================
 const usbPorts = [];
 async function connectUSB(){
   if (!('serial' in navigator)){ setStatus('USB needs Chrome or Edge on a laptop.'); return; }
@@ -797,7 +843,7 @@ async function connectUSB(){
   usbPorts.push(u);
   const enc = new TextEncoderStream(); enc.readable.pipeTo(port.writable).catch(() => {});
   u.writer = enc.writable.getWriter();
-  setStatus('USB connected. Reading the Minima...'); logApp('USB device connected');
+  setStatus('USB connected. Reading the XIAO...'); logApp('USB device connected');
   const dec = new TextDecoderStream(); port.readable.pipeTo(dec.writable).catch(() => {});
   const reader = dec.readable.getReader(); let buf = '';
   try{
@@ -808,7 +854,7 @@ async function connectUSB(){
         const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
         if (!line) continue;
         const p = line.split(',');
-        if ((p[0] === 'L' || p[0] === 'R') && p.length >= 13 && p.slice(1).every(x => x !== '' && !isNaN(x))){
+        if ((p[0] === 'L' || p[0] === 'R') && p.length >= CSV_FIELDS && p.slice(1).every(x => x !== '' && !isNaN(x))){
           u.foot = p[0];
           ingest(p[0], parseCsv(p), 'USB', line);
         } else logDbg(u.foot, line);
@@ -829,14 +875,119 @@ async function sendCmd(text){
   for (const u of targets){ try{ await u.writer.write(text + '\n'); }catch(e){ logApp('could not send: ' + e.message); } }
 }
 
-// ===================== keyboard (testing without shoes) =====================
-addEventListener('keydown', e => {
-  if (['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
-  const k = e.key.toLowerCase();
-  if (k === 'w' || k === 'r' || k === 'x'){ const s = {x:STILL, w:WALK, r:RUN}[k]; for (const id of ['L','R']) simSet(id, s); }
-  else if (k === 's') simSet('L', 'spin');
-  else if (k >= '1' && k <= '4') selectSound(+k - 1, 'keyboard');
-});
+// ===================== raw pressure =====================
+const PRESS_MS = 10000;
+function drawPressure(now){
+  const r = det.rates(now);
+  for (const id of ['L','R']){
+    const f = feet[id], d = f.d, live = isLive(f, now);
+    $('pressN'+id).textContent = live ? d.fsr : '-';
+    $('rateP'+id).textContent = live ? d.fsr : '-';
+    $('pressBar'+id).style.width = (live ? clamp(d.fsr / 4095, 0, 1) * 100 : 0) + '%';
+    $('pressDown'+id).className = 'lamp' + (live && (d.flags & 2) ? ' on' : '');
+    const spm = live ? r[id] : 0, zone = det.rateZone(spm), T = det.T;
+    $('pressSpm'+id).textContent = live ? Math.round(spm) : '-';
+    const z = $('pressZone'+id); z.textContent = live ? zone.toUpperCase() : '-'; z.className = 'badge s' + (live ? {still:0, walk:1, run:2}[zone] : 0);
+    $('pressSub'+id).textContent = !live ? (f.lastLive ? 'stopped sending' : 'not connected')
+      : `still under ${T.WALK_MIN_SPM} · walk ${T.WALK_MIN_SPM}-${T.RUN_SPM - 1} · run ${T.RUN_SPM}+ · ${d.steps} steps`;
+  }
+  const cv = $('pressCv'), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const L = 40, top = 8, bot = h - 16;
+  const x = t => L + (1 - (now - t) / PRESS_MS) * (w - L - 6), y = v => bot - clamp(v / 4095, 0, 1) * (bot - top);
+  c.font = '11px system-ui'; c.textBaseline = 'middle'; c.textAlign = 'right';
+  for (let v = 0; v <= 4000; v += 1000){ c.strokeStyle = '#1d212a'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, y(v)); c.lineTo(w, y(v)); c.stroke(); c.fillStyle = '#5b6273'; c.fillText(v, L - 6, y(v)); }
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  for (let s = 10; s >= 0; s -= 2) c.fillText(s ? `-${s}s` : 'now', Math.min(x(now - s*1000) - (s ? 10 : 22), w - 26), h - 3);
+  for (const id of ['L','R']){
+    const hist = feet[id].hist.filter(p => p.t >= now - PRESS_MS), col = id === 'L' ? '#3fd0c0' : '#f5a54a';
+    c.fillStyle = id === 'L' ? 'rgba(63,208,192,.07)' : 'rgba(245,165,74,.07)';
+    for (let i = 1; i < hist.length; i++) if (hist[i].down) c.fillRect(x(hist[i-1].t), top, x(hist[i].t) - x(hist[i-1].t) + 0.5, bot - top);
+    c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath();
+    hist.forEach((p, i) => (i && p.t - hist[i-1].t < 300) ? c.lineTo(x(p.t), y(p.fsr)) : c.moveTo(x(p.t), y(p.fsr)));
+    c.stroke();
+    c.fillStyle = col;
+    for (const m of stepMarks) if (m.id === id && m.t >= now - PRESS_MS) c.fillRect(x(m.t) - 1, id === 'L' ? top : top + 7, 2, 6);
+  }
+}
+
+// ===================== step-rate graph =====================
+const RATE_MS = 30000, RATE_TOP = 240, RUN_DEFAULT = Moves.TUNING.RUN_SPM;
+const rateHist = [];   // {t, L, R, both, run, g} every 100 ms
+const stepMarks = [];  // {t, id} every step a shoe counted
+function setRunSpm(v, keep = true){
+  v = Math.round(clamp(v, 100, 220));
+  det.T.RUN_SPM = v; $('runSpm').value = v; $('runSpmN').textContent = v;
+  if (keep) save('runSpm', v);
+}
+function sampleRates(){
+  const now = performance.now(), r = det.rates(now), g = det.gait(now);
+  rateHist.push({t:now, L:r.live.L ? r.L : null, R:r.live.R ? r.R : null, both:(r.live.L || r.live.R) ? r.both : null, run:det.T.RUN_SPM, g});
+  while (rateHist.length && rateHist[0].t < now - RATE_MS) rateHist.shift();
+  while (stepMarks.length && stepMarks[0].t < now - RATE_MS) stepMarks.shift();
+  $('rateL').textContent = r.live.L ? Math.round(r.L) : '-';
+  $('rateR').textContent = r.live.R ? Math.round(r.R) : '-';
+  $('rateB').textContent = (r.live.L || r.live.R) ? Math.round(r.both) : '-';
+  const el = $('rateState'); el.textContent = g.toUpperCase(); el.className = 'badge big s' + ({still:0, walk:1, run:2}[g]);
+  drawRates(now);
+}
+const rateY = (v, h) => h - 18 - (Math.min(v, RATE_TOP) / RATE_TOP) * (h - 26);
+function drawRates(now){
+  const cv = $('rateCv'), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const L = 36, x = t => L + (1 - (now - t) / RATE_MS) * (w - L - 6);
+  const run = det.T.RUN_SPM, walk = Moves.TUNING.WALK_MIN_SPM;
+  // bands: still / walk / run
+  c.fillStyle = 'rgba(107,114,128,.10)'; c.fillRect(L, rateY(walk, h), w - L, rateY(0, h) - rateY(walk, h));
+  c.fillStyle = 'rgba(76,195,138,.08)';  c.fillRect(L, rateY(run, h), w - L, rateY(walk, h) - rateY(run, h));
+  c.fillStyle = 'rgba(245,85,74,.09)';   c.fillRect(L, rateY(RATE_TOP, h), w - L, rateY(run, h) - rateY(RATE_TOP, h));
+  c.font = '11px system-ui'; c.textBaseline = 'middle';
+  for (let v = 0; v <= RATE_TOP; v += 40){
+    const y = rateY(v, h); c.strokeStyle = '#1d212a'; c.lineWidth = 1; c.beginPath(); c.moveTo(L, y); c.lineTo(w, y); c.stroke();
+    c.fillStyle = '#5b6273'; c.textAlign = 'right'; c.fillText(v, L - 6, y);
+  }
+  c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillStyle = '#5b6273';
+  for (let s = 30; s >= 0; s -= 5) c.fillText(s ? `-${s}s` : 'now', Math.min(x(now - s*1000) - (s ? 10 : 22), w - 26), h - 4);
+  // threshold lines
+  const line = (v, col, dash, text, below) => { const y = rateY(v, h);
+    c.strokeStyle = col; c.lineWidth = dash ? 1 : 2; c.setLineDash(dash || []); c.beginPath(); c.moveTo(L, y); c.lineTo(w, y); c.stroke(); c.setLineDash([]);
+    c.fillStyle = col; c.font = '600 11px system-ui'; c.fillText(text, L + 6, below ? y + 13 : y - 5); };
+  line(walk, '#4cc38a', [4, 4], `walk from ${walk}`);
+  if (det.running) line(run - det.T.RUN_HYST_SPM, 'rgba(245,85,74,.5)', [2, 4], `back to walk under ${run - det.T.RUN_HYST_SPM}`, true);
+  line(run, rateDrag ? '#ff8a80' : '#f5554a', null, `run from ${run}  (drag me)`);
+  // state strip along the bottom
+  for (let i = 1; i < rateHist.length; i++){ const a = rateHist[i-1], b = rateHist[i];
+    c.fillStyle = {still:'#6b7280', walk:'#4cc38a', run:'#f5554a'}[b.g]; c.fillRect(x(a.t), h - 16, x(b.t) - x(a.t) + 0.5, 3); }
+  // a tick for every counted step: left on the upper row, right on the lower
+  for (const m of stepMarks){ c.fillStyle = m.id === 'L' ? '#3fd0c0' : '#f5a54a'; c.fillRect(x(m.t) - 1, m.id === 'L' ? h - 30 : h - 24, 2, 6); }
+  // the three rate lines
+  for (const [k, col, wid] of [['L', '#3fd0c0', 1.6], ['R', '#f5a54a', 1.6], ['both', '#ffffff', 2.4]]){
+    c.strokeStyle = col; c.lineWidth = wid; c.beginPath(); let pen = false;
+    for (const p of rateHist){ if (p[k] === null){ pen = false; continue; } const X = x(p.t), Y = rateY(p[k], h); pen ? c.lineTo(X, Y) : c.moveTo(X, Y); pen = true; }
+    c.stroke();
+  }
+}
+let rateDrag = false;
+function rateFromEvent(e){ const r = $('rateCv').getBoundingClientRect(), h = r.height, y = e.clientY - r.top;
+  return (h - 18 - y) / (h - 26) * RATE_TOP; }
+function buildRates(){
+  setRunSpm(load('runSpm', RUN_DEFAULT), false);
+  $('runHyst').textContent = det.T.RUN_HYST_SPM;
+  $('runSpm').oninput = e => setRunSpm(+e.target.value);
+  $('runSpmReset').onclick = () => setRunSpm(RUN_DEFAULT);
+  const cv = $('rateCv');
+  cv.addEventListener('pointerdown', e => { if (Math.abs(rateFromEvent(e) - det.T.RUN_SPM) < 14){ rateDrag = true; cv.setPointerCapture(e.pointerId); } });
+  cv.addEventListener('pointermove', e => {
+    if (rateDrag) setRunSpm(rateFromEvent(e));
+    else cv.style.cursor = Math.abs(rateFromEvent(e) - det.T.RUN_SPM) < 14 ? 'ns-resize' : 'default';
+  });
+  const end = () => { rateDrag = false; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+}
 
 // ===================== go =====================
 $('startBtn').onclick = start;
@@ -845,11 +996,17 @@ $('bleR').onclick = () => connectBLE('R');
 $('usbBtn').onclick = connectUSB;
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 buildPlay();
+buildRates();
 buildMonitor();
-setInterval(applyVolume, 50);
+loadSavedSounds();
+setInterval(() => {
+  const cur = det.update(performance.now());
+  if (cur.id !== playedId){ playedId = cur.id; playMovement(cur); }
+}, 25);
 setInterval(drawMonitor, 100);
-(function frame(){ drawPlay(); requestAnimationFrame(frame); })();
-window.shoeApp = {feet, ingest, decodePacket, overallState, slots, get active(){ return active; }, get paused(){ return paused; }, get started(){ return started; }};
+setInterval(sampleRates, 100);
+(function frame(){ drawPlay(); if (tab === 'play') drawPressure(performance.now()); requestAnimationFrame(frame); })();
+window.shoeApp = {feet, det, rateHist, setRunSpm, ingest, decodePacket, parseCsv, slots, slotForFileName, get playing(){ return playing && playing.key; }, get started(){ return started; }};
 </script>
 </body>
 </html>

@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sound Effect Shoes - gyro test</title>
+<style>
+:root{--bg:#0e1014;--panel:#171a21;--line:#2a2f3a;--text:#e9ebf1;--mute:#8d95a8;--L:#3fd0c0;--R:#f5a54a;--accent:#a58bff;--ok:#4cc38a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+h1{margin:0 12px 0 0;font-size:18px}
+a{color:var(--accent)}
+button{background:#1f232c;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 13px;font:inherit;cursor:pointer}
+button:hover{border-color:var(--accent)}
+.status{color:var(--mute);font-size:13px;margin-left:auto}
+main{display:grid;gap:12px;padding:14px 20px 40px;max-width:1320px;margin:0 auto}
+.chart{display:grid;grid-template-columns:1fr 230px;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+@media(max-width:800px){.chart{grid-template-columns:1fr}}
+.chart h2{margin:0 0 6px;font-size:14px}
+.chart .help{color:var(--mute);font-size:12px;font-weight:400;margin-left:6px}
+canvas{width:100%;height:150px;background:#0a0c10;border-radius:8px;display:block}
+.nums{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;align-content:center;font-variant-numeric:tabular-nums}
+.nums .k{font-size:12px;font-weight:700}
+.nums .v{font-size:22px;font-weight:700;text-align:right}
+.nums .s{grid-column:1/-1;font-size:12px;color:var(--mute);margin-top:-2px;text-align:right}
+.dot{width:9px;height:9px;border-radius:50%;background:#4a4f5c;display:inline-block}
+.dot.live{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.links{display:flex;flex-wrap:wrap;gap:8px 18px;padding:8px 20px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mute)}
+.links b{color:var(--text)}
+.warn{color:#f5554a;font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>Gyro test</h1>
+  <button id="bleL"><span class="dot" id="dotL"></span> Connect Left shoe</button>
+  <button id="bleR"><span class="dot" id="dotR"></span> Connect Right shoe</button>
+  <button id="resetTurn" title="set both accumulated turn angles back to 0">Zero turn</button>
+  <a href="index.html">Back to the sound app</a>
+  <div class="status" id="status">Not connected. The sound app and this page can't both be connected to the same shoe: disconnect it there first.</div>
+</header>
+<div class="links"><span><b style="color:var(--L)">Left:</b> <span id="infoL">not connected</span></span><span><b style="color:var(--R)">Right:</b> <span id="infoR">not connected</span></span></div>
+<div class="links warn" id="warn" style="display:none"></div>
+<main id="charts"></main>
+
+<script>
+const SERVICE_UUID = '7b1e0001-5d2c-4c3b-9a41-50a1c5717e00';   // must match xiao_foot.ino
+const DATA_UUID    = '7b1e0002-5d2c-4c3b-9a41-50a1c5717e00';
+const FOOT_UUID    = '7b1e0003-5d2c-4c3b-9a41-50a1c5717e00';
+const WINDOW_MS = 30000, LIVE_MS = 1000;
+const POSE_NAMES = ['flat', 'tiptoe', 'heel', 'side', 'sky'];
+const $ = id => document.getElementById(id);
+const setStatus = t => { $('status').textContent = t; };
+const warn = t => { $('warn').style.display = t ? '' : 'none'; $('warn').textContent = t || ''; };
+const NAME = {L:'left', R:'right'}, OTHER = {L:'R', R:'L'};
+
+// 20 bytes, see xiao_foot/packet.h
+function decodePacket(v){
+  return { state:v.getUint8(0), spins:v.getUint8(1), flags:v.getUint8(2), spinPct:v.getUint8(3),
+    fsr:v.getUint16(4,true), steps:v.getUint16(6,true), stepMs:v.getUint16(8,true),
+    pitch:v.getInt8(10), roll:v.getInt8(11), peakG:v.getUint8(12)/16, gyro:v.getUint8(13)*8,
+    yaw:v.getInt16(14,true), event:v.getUint8(16), events:v.getUint8(17), pose:v.getUint8(18), air10:v.getUint8(19) };
+}
+
+const mkFoot = () => ({ d:null, last:0, lastT:0, turn:0, hist:[], upSince:0, dev:null, name:'', said:'', pkts:0, rate:0 });
+const feet = {L:mkFoot(), R:mkFoot()};
+
+function ingest(id, d){
+  const f = feet[id], now = performance.now();
+  // accumulated turn: yaw rate (deg/s) added up between packets; a gap over 0.5 s isn't counted
+  if (f.lastT && now - f.lastT < 500) f.turn += d.yaw * (now - f.lastT) / 1000;
+  const inAir = !!(d.flags & 0x10);   // the shoe's accelerometer: weightless right now
+  if (inAir && (!f.d || !(f.d.flags & 0x10))) f.upSince = now;
+  f.d = d; f.lastT = f.last = now; f.pkts++;
+  f.hist.push({t:now, pitch:d.pitch, roll:d.roll, yaw:d.yaw, turn:f.turn, air:d.air10 * 10, up:inAir ? now - f.upSince : 0});
+  while (f.hist.length && f.hist[0].t < now - WINDOW_MS) f.hist.shift();
+}
+
+// Each chart: series per foot, a fixed y range, and the numbers shown beside it
+const CHARTS = [
+  {key:'pitch', title:'Pitch (tilt toe / heel)', help:'degrees from flat: + toes up (heel back), - toes down (tiptoe)', min:-90, max:90, unit:'°',
+    lines:[{k:'pitch'}], nums:f => [[`${f.d.pitch}°`, POSE_NAMES[f.d.pose] || '?']]},
+  {key:'roll', title:'Roll (tilt sideways)', help:'degrees rolled sideways from flat', min:-90, max:90, unit:'°',
+    lines:[{k:'roll'}], nums:f => [[`${f.d.roll}°`, `pose ${POSE_NAMES[f.d.pose] || '?'}`]]},
+  {key:'yaw', title:'Spin: yaw rate', help:'turning speed around the up/down line, deg/s (+ one way, - the other)', min:-720, max:720, unit:'°/s',
+    lines:[{k:'yaw'}], nums:f => [[`${f.d.yaw}°/s`, `spin ${f.d.spinPct}% · ${f.d.spins} spins`]]},
+  {key:'turn', title:'Spin: accumulated turn', help:'yaw rate added up on this page (360° = one full turn). "Zero turn" resets it', min:-720, max:720, unit:'°', auto:true,
+    lines:[{k:'turn'}], nums:f => [[`${Math.round(f.turn)}°`, `${(f.turn / 360).toFixed(2)} turns`]]},
+  {key:'air', title:'Air time', help:'from the accelerometer only (weightless = in the air). Solid: the last time in the air, dashed: in the air right now', min:0, max:1000, unit:'ms',
+    lines:[{k:'air'}, {k:'up', dash:[4, 4]}], nums:f => [[`${f.d.air10 * 10} ms`, f.d.flags & 0x10 ? `in the air ${Math.round(f.hist.length ? f.hist[f.hist.length - 1].up : 0)} ms` : 'not in the air']]},
+];
+
+function build(){
+  $('charts').innerHTML = CHARTS.map(c => `
+    <section class="chart">
+      <div><h2>${c.title}<span class="help">${c.help}</span></h2><canvas id="cv-${c.key}"></canvas></div>
+      <div class="nums">
+        <span class="k" style="color:var(--L)">Left</span><span class="v" id="n-${c.key}-L">-</span><span class="s" id="s-${c.key}-L"></span>
+        <span class="k" style="color:var(--R)">Right</span><span class="v" id="n-${c.key}-R">-</span><span class="s" id="s-${c.key}-R"></span>
+      </div>
+    </section>`).join('');
+}
+
+function drawChart(c, now){
+  const cv = $('cv-' + c.key), w = cv.clientWidth, h = cv.clientHeight; if (!w) return;
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  let min = c.min, max = c.max;
+  if (c.auto) for (const id of ['L','R']) for (const p of feet[id].hist){ min = Math.min(min, p[c.lines[0].k]); max = Math.max(max, p[c.lines[0].k]); }
+  const L = 44, top = 6, bot = h - 16;
+  const x = t => L + (1 - (now - t) / WINDOW_MS) * (w - L - 6), y = v => bot - (v - min) / (max - min) * (bot - top);
+  g.font = '11px system-ui'; g.textBaseline = 'middle'; g.textAlign = 'right';
+  const step = (max - min) / 4;
+  for (let i = 0; i <= 4; i++){ const v = min + i * step; g.strokeStyle = Math.abs(v) < 1e-6 ? '#3a404d' : '#1d212a'; g.beginPath(); g.moveTo(L, y(v)); g.lineTo(w, y(v)); g.stroke();
+    g.fillStyle = '#5b6273'; g.fillText(Math.round(v), L - 6, y(v)); }
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  for (let s = 30; s >= 0; s -= 5) g.fillText(s ? `-${s}s` : 'now', Math.min(x(now - s*1000) - (s ? 10 : 22), w - 26), h - 3);
+  for (const id of ['L','R']){
+    const hist = feet[id].hist;
+    for (const ln of c.lines){
+      g.strokeStyle = id === 'L' ? '#3fd0c0' : '#f5a54a'; g.lineWidth = 1.8; g.setLineDash(ln.dash || []); g.beginPath();
+      hist.forEach((p, i) => { const X = x(p.t), Y = y(Math.max(min, Math.min(max, p[ln.k]))); (i && p.t - hist[i-1].t < 300) ? g.lineTo(X, Y) : g.moveTo(X, Y); });
+      g.stroke(); g.setLineDash([]);
+    }
+  }
+}
+
+function draw(){
+  const now = performance.now();
+  for (const id of ['L','R']){
+    const f = feet[id], live = now - f.last < LIVE_MS;
+    $('dot' + id).classList.toggle('live', live);
+    $('info' + id).textContent = !f.dev ? 'not connected'
+      : `"${f.name}"${f.said ? `, says it is the ${NAME[f.said]} shoe` : ", doesn't say which foot"} · ${live ? f.rate + ' packets/s' : 'no data'}`
+        + (live && f.d ? ((f.d.flags & 1) ? ' · gyro OK' : ' · GYRO NOT FOUND (check its wiring; pitch/roll/yaw read 0)') : '');
+  }
+  for (const c of CHARTS){
+    drawChart(c, now);
+    for (const id of ['L','R']){
+      const f = feet[id], live = f.d && now - f.last < LIVE_MS;
+      const [v, sub] = live ? c.nums(f)[0] : ['-', f.last ? 'stopped sending' : 'not connected'];
+      $(`n-${c.key}-${id}`).textContent = v; $(`s-${c.key}-${id}`).textContent = sub;
+    }
+  }
+  requestAnimationFrame(draw);
+}
+
+async function connectBLE(id){
+  if (!navigator.bluetooth){ setStatus('Bluetooth needs Chrome or Edge, opened from localhost or https.'); return; }
+  try{
+    setStatus(`Pick "MusicShoe-${id}" in the popup (any shoe in the list will do: the page asks it which foot it is).`);
+    const dev = await navigator.bluetooth.requestDevice({filters:[{namePrefix:'MusicShoe-' + id}, {services:[SERVICE_UUID]}], optionalServices:[SERVICE_UUID]});
+    let foot = id, ch = null;
+    const onData = e => { const v = e.target.value; if (v.byteLength >= 20) ingest(foot, decodePacket(v)); };
+    const run = async () => {
+      if (ch) ch.removeEventListener('characteristicvaluechanged', onData);
+      const svc = await (await dev.gatt.connect()).getPrimaryService(SERVICE_UUID);
+      let said = '';
+      try{ said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim(); }catch(e){}
+      if (said !== 'L' && said !== 'R') said = '';
+      foot = said || id;
+      // two boards can't be the same foot: the second one goes where the button said
+      const taken = feet[foot].dev && feet[foot].dev !== dev && performance.now() - feet[foot].last < LIVE_MS;
+      if (taken && foot !== id){
+        warn(`Both shoes say they are the ${NAME[foot]} shoe, so "${dev.name || 'unnamed'}" is shown as the ${NAME[id]} shoe. Set FOOT to '${id}' in config.h and upload to that shoe again.`);
+        foot = id;
+      } else if (said && said !== id){
+        warn(`You clicked Connect ${NAME[id]}, but "${dev.name || 'unnamed'}" says it is the ${NAME[said]} shoe, so it's shown as ${NAME[said]}. ` +
+          `macOS can list a shoe under an old name: click Connect ${NAME[id]} again and pick the other entry.`);
+      } else warn('');
+      if (feet[OTHER[foot]].dev === dev) feet[OTHER[foot]].dev = null;
+      Object.assign(feet[foot], {dev, name:dev.name || 'unnamed', said, connectedAt:Date.now()});
+      ch = await svc.getCharacteristic(DATA_UUID);
+      ch.addEventListener('characteristicvaluechanged', onData);
+      await ch.startNotifications();
+      setStatus(`${NAME[foot]} shoe connected.`);
+    };
+    dev.addEventListener('gattserverdisconnected', () => { setStatus('Shoe dropped, reconnecting...'); setTimeout(() => run().catch(() => setStatus('Shoe lost. Click Connect again.')), 800); });
+    await run();
+  }catch(e){ setStatus(e.name === 'NotFoundError' ? 'No shoe picked.' : 'Bluetooth error: ' + e.message); }
+}
+
+$('bleL').onclick = () => connectBLE('L');
+$('bleR').onclick = () => connectBLE('R');
+$('resetTurn').onclick = () => { feet.L.turn = feet.R.turn = 0; };
+setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; feet[id].pkts = 0; } }, 1000);
+build();
+draw();
+window.gyroApp = {feet, ingest, decodePacket};
+</script>
+</body>
+</html>
