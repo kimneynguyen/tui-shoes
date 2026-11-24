@@ -26,6 +26,9 @@ canvas{width:100%;height:150px;background:#0a0c10;border-radius:8px;display:bloc
 .nums .s{grid-column:1/-1;font-size:12px;color:var(--mute);margin-top:-2px;text-align:right}
 .dot{width:9px;height:9px;border-radius:50%;background:#4a4f5c;display:inline-block}
 .dot.live{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.links{display:flex;flex-wrap:wrap;gap:8px 18px;padding:8px 20px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mute)}
+.links b{color:var(--text)}
+.warn{color:#f5554a;font-weight:600}
 </style>
 </head>
 <body>
@@ -37,6 +40,8 @@ canvas{width:100%;height:150px;background:#0a0c10;border-radius:8px;display:bloc
   <a href="index.html">Back to the sound app</a>
   <div class="status" id="status">Not connected. The sound app and this page can't both be connected to the same shoe: disconnect it there first.</div>
 </header>
+<div class="links"><span><b style="color:var(--L)">Left:</b> <span id="infoL">not connected</span></span><span><b style="color:var(--R)">Right:</b> <span id="infoR">not connected</span></span></div>
+<div class="links warn" id="warn" style="display:none"></div>
 <main id="charts"></main>
 
 <script>
@@ -47,6 +52,8 @@ const WINDOW_MS = 30000, LIVE_MS = 1000;
 const POSE_NAMES = ['flat', 'tiptoe', 'heel', 'side', 'sky'];
 const $ = id => document.getElementById(id);
 const setStatus = t => { $('status').textContent = t; };
+const warn = t => { $('warn').style.display = t ? '' : 'none'; $('warn').textContent = t || ''; };
+const NAME = {L:'left', R:'right'}, OTHER = {L:'R', R:'L'};
 
 // 20 bytes, see xiao_foot/packet.h
 function decodePacket(v){
@@ -56,7 +63,7 @@ function decodePacket(v){
     yaw:v.getInt16(14,true), event:v.getUint8(16), events:v.getUint8(17), pose:v.getUint8(18), air10:v.getUint8(19) };
 }
 
-const mkFoot = () => ({ d:null, last:0, lastT:0, turn:0, hist:[], upSince:0 });
+const mkFoot = () => ({ d:null, last:0, lastT:0, turn:0, hist:[], upSince:0, dev:null, name:'', said:'', pkts:0, rate:0 });
 const feet = {L:mkFoot(), R:mkFoot()};
 
 function ingest(id, d){
@@ -65,7 +72,7 @@ function ingest(id, d){
   if (f.lastT && now - f.lastT < 500) f.turn += d.yaw * (now - f.lastT) / 1000;
   const down = !!(d.flags & 2);
   if (!down && (!f.d || (f.d.flags & 2))) f.upSince = now;
-  f.d = d; f.lastT = f.last = now;
+  f.d = d; f.lastT = f.last = now; f.pkts++;
   f.hist.push({t:now, pitch:d.pitch, roll:d.roll, yaw:d.yaw, turn:f.turn, air:d.air10 * 10, up:down ? 0 : now - f.upSince});
   while (f.hist.length && f.hist[0].t < now - WINDOW_MS) f.hist.shift();
 }
@@ -122,7 +129,13 @@ function drawChart(c, now){
 
 function draw(){
   const now = performance.now();
-  for (const id of ['L','R']) $('dot' + id).classList.toggle('live', now - feet[id].last < LIVE_MS);
+  for (const id of ['L','R']){
+    const f = feet[id], live = now - f.last < LIVE_MS;
+    $('dot' + id).classList.toggle('live', live);
+    $('info' + id).textContent = !f.dev ? 'not connected'
+      : `"${f.name}"${f.said ? `, says it is the ${NAME[f.said]} shoe` : ", doesn't say which foot"} · ${live ? f.rate + ' packets/s' : 'no data'}`
+        + (live && f.d ? ((f.d.flags & 1) ? ' · gyro OK' : ' · GYRO NOT FOUND (check its wiring; pitch/roll/yaw read 0)') : '');
+  }
   for (const c of CHARTS){
     drawChart(c, now);
     for (const id of ['L','R']){
@@ -144,11 +157,25 @@ async function connectBLE(id){
     const run = async () => {
       if (ch) ch.removeEventListener('characteristicvaluechanged', onData);
       const svc = await (await dev.gatt.connect()).getPrimaryService(SERVICE_UUID);
-      try{ const said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim(); if (said === 'L' || said === 'R') foot = said; }catch(e){}
+      let said = '';
+      try{ said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim(); }catch(e){}
+      if (said !== 'L' && said !== 'R') said = '';
+      foot = said || id;
+      // two boards can't be the same foot: the second one goes where the button said
+      const taken = feet[foot].dev && feet[foot].dev !== dev && performance.now() - feet[foot].last < LIVE_MS;
+      if (taken && foot !== id){
+        warn(`Both shoes say they are the ${NAME[foot]} shoe, so "${dev.name || 'unnamed'}" is shown as the ${NAME[id]} shoe. Set FOOT to '${id}' in config.h and upload to that shoe again.`);
+        foot = id;
+      } else if (said && said !== id){
+        warn(`You clicked Connect ${NAME[id]}, but "${dev.name || 'unnamed'}" says it is the ${NAME[said]} shoe, so it's shown as ${NAME[said]}. ` +
+          `macOS can list a shoe under an old name: click Connect ${NAME[id]} again and pick the other entry.`);
+      } else warn('');
+      if (feet[OTHER[foot]].dev === dev) feet[OTHER[foot]].dev = null;
+      Object.assign(feet[foot], {dev, name:dev.name || 'unnamed', said, connectedAt:Date.now()});
       ch = await svc.getCharacteristic(DATA_UUID);
       ch.addEventListener('characteristicvaluechanged', onData);
       await ch.startNotifications();
-      setStatus(`${foot === 'L' ? 'Left' : 'Right'} shoe connected.`);
+      setStatus(`${NAME[foot]} shoe connected.`);
     };
     dev.addEventListener('gattserverdisconnected', () => { setStatus('Shoe dropped, reconnecting...'); setTimeout(() => run().catch(() => setStatus('Shoe lost. Click Connect again.')), 800); });
     await run();
@@ -158,6 +185,7 @@ async function connectBLE(id){
 $('bleL').onclick = () => connectBLE('L');
 $('bleR').onclick = () => connectBLE('R');
 $('resetTurn').onclick = () => { feet.L.turn = feet.R.turn = 0; };
+setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; feet[id].pkts = 0; } }, 1000);
 build();
 draw();
 window.gyroApp = {feet, ingest, decodePacket};

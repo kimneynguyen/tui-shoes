@@ -789,6 +789,7 @@ function updateStatus(){
 setInterval(() => { for (const id of ['L','R']){ feet[id].rate = feet[id].pkts; feet[id].pkts = 0; } updateStatus(); }, 1000);
 
 // ===================== Bluetooth (one per shoe) =====================
+const bleDevs = {L:null, R:null};
 async function connectBLE(id){
   if (!navigator.bluetooth){ setStatus('Bluetooth needs Chrome or Edge, opened from localhost or https.'); return; }
   try{
@@ -806,11 +807,17 @@ async function connectBLE(id){
       const server = await dev.gatt.connect();
       const svc = await server.getPrimaryService(SERVICE_UUID);
       try{
-        const said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim();
+        let said = new TextDecoder().decode(await (await svc.getCharacteristic(FOOT_UUID)).readValue()).trim();
         if (said === 'L' || said === 'R'){
-          if (said !== foot) logApp(`"${dev.name || 'unnamed'}" says it is the ${FOOT_NAME[said].toLowerCase()} shoe, so it's used as the ${FOOT_NAME[said].toLowerCase()} shoe`);
+          const other = bleDevs[said] && bleDevs[said] !== dev && isLive(feet[said]);
+          if (other && said !== id){
+            logApp(`both shoes say they are the ${FOOT_NAME[said].toLowerCase()} shoe, so "${dev.name || 'unnamed'}" is used as the ${FOOT_NAME[id].toLowerCase()} shoe. Set FOOT to '${id}' in config.h and upload to that shoe again.`);
+            setStatus(`Both shoes say ${FOOT_NAME[said]}. Upload the ${FOOT_NAME[id].toLowerCase()} shoe again with FOOT '${id}'.`);
+            said = id;
+          } else if (said !== foot) logApp(`"${dev.name || 'unnamed'}" says it is the ${FOOT_NAME[said].toLowerCase()} shoe, so it's used as the ${FOOT_NAME[said].toLowerCase()} shoe`);
           foot = said;
         }
+        bleDevs[foot] = dev;
       }catch(e){ logApp(`"${dev.name || 'unnamed'}" doesn't say which foot it is (older firmware), using it as the ${FOOT_NAME[foot].toLowerCase()} shoe`); }
       ch = await svc.getCharacteristic(DATA_UUID);
       ch.addEventListener('characteristicvaluechanged', onData);
