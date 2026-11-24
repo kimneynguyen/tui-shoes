@@ -4,6 +4,12 @@ Two shoes that play a different sound for each of **15 movements**. Each shoe ha
 
 > **Not tested on real shoes yet.** The movement detection compiles for the XIAO ESP32-C6 (esp32 core 3.3.12) and passes the laptop tests (`tests/logic_test`, `tests/movement_test`), but every threshold is a first guess. Expect to tune them (see [Tuning the movements](#tuning-the-movements)).
 
+Testing happens in three phases. Phase 1 is the goal, phase 2 and 3 test the two sensors on their own.
+
+## Phase 1: all movements
+
+The shoes detect 15 movements. **Each one has its own sound slot** in the sound app (`sampler/index.html`), and every slot starts empty.
+
 | # | Movement | Kind | Needs |
 |---|---|---|---|
 | 1 | Standing still | lasting | one shoe |
@@ -22,9 +28,35 @@ Two shoes that play a different sound for each of **15 movements**. Each shoe ha
 | 14 | Both feet to the sky (lying down) | lasting | **both shoes** |
 | 15 | Shuffle / slide | lasting | one shoe |
 
+
 **Only one movement sound plays at a time.** A new movement stops the old sound. Quick moves play their sound once and stay "now" for 0.9 s; lasting moves loop their sound while you keep doing them (each slot has a **loop** box to change that). How hard you press is not an output.
 
-Every slot starts **empty**. Drop an audio file on a slot, click **Choose**, or put files in `sampler/sounds/` named like `05-jump.wav` (see [Adding your sounds](#adding-your-sounds)). Until then, **Beep for empty slots** plays a short test tone per movement so you can hear what's detected. Every slot also has a **Test** button that pretends the movement happened.
+Fill a slot by dropping an audio file on it, clicking **Choose**, or putting files in `sampler/sounds/` named like `05-jump.wav` (see [Adding your sounds](#adding-your-sounds)). Until then, **Beep for empty slots** plays a short test tone per movement so you can hear what's detected. Every slot also has a **Test** button that pretends the movement happened. How each movement is worked out: [The movements](#the-movements-how-each-one-is-detected).
+
+## Phase 2: force sensor (walk vs run)
+
+The pressure sensor (FSR) in each sole counts steps. Walking vs running comes from how fast the steps come, not from how hard they are.
+
+- **A step** is the sole pressing down. The shoe learns the "foot up" (rest) and "full press" (peak) readings, and counts a step when pressure rises 40% of the way from rest to peak (`FSR_PRESS_FRAC`). The foot counts as up again under 20% (`FSR_RELEASE_FRAC`). Readings under 150 (`FSR_MIN_PRESS`) never count, and two steps closer than 250 ms (`STEP_MIN_MS`) are one.
+- **Step rate** is in steps per minute, both feet counted: each foot's rate is the average of its last 4 gaps between steps, times 2.
+- **Thresholds:** still under 40 steps/min (or no step for about 2 s), walk from 40, **run from 150** (`RUN_SPM`, back to walking under 140). People walk at about 100-120 and run at 150-180.
+- **In the sound app** (Play view): the **Pressure** panel shows each shoe's raw reading (0-4095) live, with a trace and its steps/min labelled STILL / WALK / RUN. The **Step rate** graph shows the last 30 s with the run line, which you can drag to tune it (saved in the browser). Details: [The pressure panel](#the-pressure-panel-raw-force-from-each-shoe) and [The step-rate graph](#the-step-rate-graph-setting-walk-vs-run).
+
+## Phase 3: gyro (current)
+
+The MPU-6050 on each shoe measures tilt, spin and air time.
+
+- **Tilt:** pitch (toes down / heel down) and roll (sideways) in degrees from flat, measured against the "flat" saved when the shoe calibrates. More than 20° (`TILT_DEG`) is tiptoe, heel or side; toes up more than 60° (`SKY_PITCH_DEG`) is pointing at the sky.
+- **Spin:** turning speed around the up/down line. Turning faster than 120 °/s (`SPIN_RATE_DPS`) through 330° (`SPIN_DEG`) within 3 s is one spin.
+- **Air time:** how long the shoe is close to **weightless** (total acceleration under 0.4 g for at least 40 ms, `AIR_FREEFALL_G`), ended by a landing hit or by returning to normal gravity. This is **free fall, not height**: a foot that is lifted and held up still reads about 1 g, so it is not "in the air". Only jumps, hops and running strides with both feet off the ground give air time.
+
+To see these numbers live, the gyro test page (`sampler/gyro.html`) graphs pitch, roll, yaw rate, total turn and air time for each shoe; see [The gyro test page](#the-gyro-test-page).
+
+## Current breadboard
+
+One shoe's breadboard as it is now: the XIAO ESP32-C6 (left, USB-C), the MPU-6050 gyro board (right), and the FSR on its leads (far left). Wiring is in [Wiring](#wiring-same-on-both-shoes).
+
+![Current breadboard](docs/breadboard-current.png)
 
 ## Pictures
 
@@ -44,7 +76,7 @@ Every slot starts **empty**. Drop an audio file on a slot, click **Choose**, or 
 
 ![Step-rate graph](docs/walk-run-graph.png)
 
-**The real left-shoe build** in its 3D-printed tent case: the XIAO ESP32-C6 (small black board) and the MPU-6050 gyro (purple board, red light) on the breadboard, with the Arduino UNO R4 Minima underneath. (That was the old two-board build. Each shoe now uses only the XIAO.)
+**An earlier left-shoe build** in its 3D-printed tent case: the XIAO ESP32-C6 (small black board) and the MPU-6050 gyro (purple board, red light) on the breadboard, with the Arduino UNO R4 Minima underneath. (That was the old two-board build. Each shoe now uses only the XIAO.)
 
 ![Breadboard build, view 1](docs/breadboard-1.jpg)
 ![Breadboard build, view 2](docs/breadboard-2.jpg)
@@ -120,10 +152,6 @@ python3 -m http.server 8000
 ```
 Then go to `http://localhost:8000` in Chrome. Press **Start sound**, then **Connect Left shoe** (`MusicShoe-L`) and **Connect Right shoe** (`MusicShoe-R`).
 
-### The gyro test page
-
-Open `http://localhost:8000/gyro.html` (or the **Gyro test page** link at the top of the sound app). Connect the shoes there to see, per shoe over the last 30 s: pitch, roll, yaw rate, the turn added up from the yaw rate (360° = one spin, **Zero turn** resets it), and air time from the accelerometer only (the shoe is weightless in the air: the last time in the air, plus how long it has been in the air right now; tune with `AIR_*` in `config.h`), with the numbers beside each graph. A shoe can only be connected to one page at a time.
-
 ### The pressure panel: raw force from each shoe
 
 The **Pressure** panel (Play view, above the step-rate graph) shows each shoe's sensor reading as it arrives, 25 times a second: a big number (0-4095) and a bar per foot, plus a 10 s trace. It is not tied to steps, so holding, light presses and hard presses all show. Shaded areas are where the shoe counts the foot as down, and ticks on the top edge are counted steps. Under each number: the time between that foot's last two counted presses and its step count. The same raw number is next to "left / right pressure" on the step-rate graph and in each shoe's box lower down.
@@ -141,6 +169,10 @@ The **Step rate** panel draws steps per minute over the last 30 s: left (teal), 
 How the rate is worked out: each foot's rate is the average of its last 4 gaps between counted presses, leaving out the longest and shortest (so one missed or extra step barely moves it), times 2. With both shoes the two are averaged. It holds steady between steps and only falls once the next step is 1.5 gaps late. The Pressure panel shows each foot's rate in steps/min with a STILL / WALK / RUN label and the lines (still under 40, run from the red line). Expect RUN about 2.5 s after you speed up, WALK about 2 s after you slow down, and STILL about 2 s after the last step.
 
 No shoes yet? Click **Test** on any slot to pretend that movement happened. With `DEMO_MODE 1` in `config.h`, a shoe with no sensors makes up still, walk, run, spin, each pose and each one-foot event, 3 seconds each.
+
+### The gyro test page
+
+Open `http://localhost:8000/gyro.html` (or the **Gyro test page** link at the top of the sound app). Connect the shoes there to see, per shoe over the last 30 s: pitch, roll, yaw rate, the turn added up from the yaw rate (360° = one spin, **Zero turn** resets it), and air time from the accelerometer only (the shoe is weightless in the air: the last time in the air, plus how long it has been in the air right now; tune with `AIR_*` in `config.h`), with the numbers beside each graph. A shoe can only be connected to one page at a time.
 
 ## Adding your sounds
 
